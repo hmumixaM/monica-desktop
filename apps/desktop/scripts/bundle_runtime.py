@@ -194,6 +194,9 @@ def relocate_postgres(prefix):
 
 def copy_sources():
     shutil.copy2(DESKTOP / "runtime/capabilities.json", OUT / "capabilities.json")
+    (OUT / 'licenses').mkdir(exist_ok=True)
+    shutil.copy2(DESKTOP / 'patches/chatlog/LICENSE', OUT / 'licenses/chatlog-alpha.LICENSE.txt')
+    shutil.copy2(ROOT / 'THIRD_PARTY_NOTICES.md', OUT / 'licenses/THIRD_PARTY_NOTICES.md')
     for source, dest in ((DESKTOP / "runtime/monica_desktop", OUT / "desktop/monica_desktop"),
                          (ROOT / "services/api/app", OUT / "api/app"), (ROOT / "migrations", OUT / "migrations"),
                          (ROOT / "importers/faces/monica_faces", OUT / "faces/monica_faces"),
