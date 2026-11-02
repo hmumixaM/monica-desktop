@@ -113,7 +113,7 @@ def publish(folder, sha, repository, ref):
     gh('release', 'upload', tag, '--repo', repository, '--clobber', *[str(p) for p in sorted(folder.iterdir())])
     # Uploading a partial set leaves a draft, never a public broken release.
     assets = json.loads(gh('release', 'view', tag, '--repo', repository, '--json', 'assets'))['assets']
-    if {a['name'] for a in assets} != {p.name for p in folder.iterdir()}:
+    if {a['name']: a['size'] for a in assets} != {p.name: p.stat().st_size for p in folder.iterdir()}:
         raise ValueError('Remote release assets are incomplete')
     gh('release', 'edit', tag, '--repo', repository, '--draft=false', '--prerelease', '--latest=false')
     print(f'https://github.com/{repository}/releases/tag/{tag}')

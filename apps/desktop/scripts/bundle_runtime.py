@@ -286,6 +286,12 @@ def main():
     copy_sources()
     configure_face_contract(external)
     if args.sources_only:
+        if external:
+            bundle_faces(args.face_models, external=True)
+            if previous.exists():
+                metadata = json.loads(previous.read_text())
+                metadata['face_models'] = {'mode': 'external'}
+                previous.write_text(json.dumps(metadata, indent=2))
         if (OUT / "python/bin/python3").exists():
             build_city_reference()
             prune_python_entrypoints()
