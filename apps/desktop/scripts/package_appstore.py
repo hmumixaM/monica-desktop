@@ -134,7 +134,7 @@ def main():
     for path, kind in binaries:
         if kind is None or path == main_binary:
             continue
-        command = ['codesign', '--force', '--sign', args.identity, '--options', 'runtime', '--timestamp']
+        command = ['codesign', '--force', '--sign', args.identity, '--options', 'runtime', '--timestamp=none']
         if kind == 2:
             command += ['--entitlements', str(child_entitlements)]
         run(*command, path)
@@ -143,11 +143,13 @@ def main():
                       not path.is_symlink() and path.suffix in ('.app', '.framework', '.xpc')),
                      key=lambda path: len(path.parts), reverse=True)
     for path in bundles:
-        command = ['codesign', '--force', '--sign', args.identity, '--options', 'runtime', '--timestamp']
+        command = ['codesign', '--force', '--sign', args.identity, '--options', 'runtime', '--timestamp=none']
         if path.suffix in ('.app', '.xpc'):
             command += ['--entitlements', str(child_entitlements)]
         run(*command, path)
-    run('codesign', '--force', '--sign', args.identity, '--options', 'runtime', '--timestamp',
+    # App Store checks the currently valid distribution certificate and re-signs
+    # the app. Developer ID timestamping is a separate distribution workflow.
+    run('codesign', '--force', '--sign', args.identity, '--options', 'runtime', '--timestamp=none',
         '--entitlements', main_entitlements, app)
     run('codesign', '--verify', '--deep', '--strict', '--verbose=2', app)
     package = output / f"Monica-{info['CFBundleShortVersionString']}-{args.build}-macos.pkg"
