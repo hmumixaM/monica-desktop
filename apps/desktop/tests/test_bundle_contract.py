@@ -11,6 +11,14 @@ spec.loader.exec_module(verifier)
 
 
 class BundleContractTests(unittest.TestCase):
+    def test_external_models_cannot_accidentally_ship_private_weights(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / 'capabilities.json').write_text(json.dumps({'capabilities': {}, 'face_models': {'mode': 'external'}}))
+            (root / 'model.onnx').write_bytes(b'private-weight-fixture')
+            with self.assertRaisesRegex(ValueError, 'includes model weights'):
+                verifier.verify_files(root)
+
     def test_missing_crawler_or_external_symlink_fails_packaging(self):
         with tempfile.TemporaryDirectory() as folder, tempfile.TemporaryDirectory() as other:
             root = Path(folder)

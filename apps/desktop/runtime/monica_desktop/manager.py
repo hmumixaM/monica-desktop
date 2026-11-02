@@ -73,6 +73,14 @@ class Manager:
     def web_url(self):
         return f"http://127.0.0.1:{self.ports['web']}" if "web" in self.ports else ""
 
+    def face_model_root(self):
+        bundled = self.bundle / 'models/insightface'
+        local = self.root / 'models/insightface'
+        for root in (bundled, local):
+            if all((root / 'models/buffalo_l' / name).is_file() for name in ('det_10g.onnx', 'w600k_r50.onnx')):
+                return root
+        return local
+
     def environment(self):
         config = self.config.value
         # Never inherit shell DATABASE_URL, Python packages or server credentials.
@@ -105,7 +113,7 @@ class Manager:
             "AI_WRITER_MODEL": config["ai"]["batch_model"], "AI_VISION_MODEL": config["ai"]["vision_model"],
             "MONICA_FACES_API": self.web_url, "MONICA_FACES_SECRET": config["secrets"]["import"],
             "MONICA_FACES_TOKEN": config["secrets"]["faces_token"], "MONICA_FACES_CACHE": str(self.root / "faces"),
-            "MONICA_FACES_MODEL_ROOT": str(self.bundle / "models/insightface"),
+            "MONICA_FACES_MODEL_ROOT": str(self.face_model_root()),
             "MONICA_FACES_PROVIDERS": '["CoreMLExecutionProvider","CPUExecutionProvider"]',
             "OMP_NUM_THREADS": "2", "OPENBLAS_NUM_THREADS": "2",
             "PLAYWRIGHT_BROWSERS_PATH": str(self.bundle / "browsers"),
@@ -266,8 +274,12 @@ class Manager:
             self.spawn("linkedin-sync", [self.python, "-m", "app.sync_linkedin", "--source",
                 self.root / "raw/linkedin/linkedin_enrichment.incoming.json", "--watch"], background=True)
         if self.config.value["sources"]["faces"]["enabled"]:
-            self.spawn("faces", [self.python, "-m", "monica_faces.run", "watch"], background=True)
-            self.sources["faces"]["state"] = "running"
+            models = self.face_model_root() / 'models/buffalo_l'
+            if all((models / name).is_file() for name in ('det_10g.onnx', 'w600k_r50.onnx')):
+                self.spawn("faces", [self.python, "-m", "monica_faces.run", "watch"], background=True)
+                self.sources["faces"].update(state="running", error="")
+            else:
+                self.sources["faces"].update(state="needs_models", error="请将 det_10g.onnx 和 w600k_r50.onnx 放入数据目录的 models/insightface/models/buffalo_l/，然后恢复任务。")
 
     def start_archive_lanes(self):
         lanes = []

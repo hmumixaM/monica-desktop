@@ -12,6 +12,8 @@ from pathlib import Path
 def verify_files(root):
     root = root.resolve()
     contract = json.loads((root / "capabilities.json").read_text())
+    if contract.get('face_models', {}).get('mode') == 'external' and any(root.rglob('*.onnx')):
+        raise ValueError('External-model release unexpectedly includes model weights')
     for capability, paths in contract["capabilities"].items():
         for name in paths:
             path = root / name
@@ -88,7 +90,7 @@ def verify(root):
         ]
         for command in entries:
             subprocess.run(command, env=env, cwd=folder, capture_output=True, text=True, timeout=30, check=True)
-    return {"capabilities": list(contract["capabilities"]), "vendored_files_verified": count,
+    return {"capabilities": list(contract["capabilities"]), "face_models": contract.get('face_models', {}).get('mode', 'bundled'), "vendored_files_verified": count,
             "entrypoint_checks": len(entries), **report}
 
 

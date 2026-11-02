@@ -12,3 +12,9 @@ dependencies = [
 
 [tool.uv]
 package = false
+
+[dependency-groups]
+dev = [
+    "pillow>=11,<13",
+    "pytest>=8.3,<9",
+]

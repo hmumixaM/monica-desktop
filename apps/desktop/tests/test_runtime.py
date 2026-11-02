@@ -86,6 +86,24 @@ class ManagerTests(unittest.TestCase):
             self.assertIn('archive-' + lane, names)
         self.assertNotIn('archive-sync', names)
 
+    def test_external_face_weights_gate_only_the_face_worker(self):
+        manager = self.manager
+        manager.state = 'running'
+        manager.config.value['sources']['faces']['enabled'] = True
+        with patch.object(manager, 'spawn') as spawn:
+            manager.start_background()
+        self.assertEqual(manager.sources['faces']['state'], 'needs_models')
+        self.assertNotIn('faces', [call.args[0] for call in spawn.call_args_list])
+        self.assertIn('worker-projection', [call.args[0] for call in spawn.call_args_list])
+        models = manager.root / 'models/insightface/models/buffalo_l'
+        models.mkdir(parents=True)
+        for name in ('det_10g.onnx', 'w600k_r50.onnx'):
+            (models / name).write_bytes(b'local-model-fixture')
+        with patch.object(manager, 'spawn') as spawn:
+            manager.start_background()
+        self.assertIn('faces', [call.args[0] for call in spawn.call_args_list])
+        self.assertEqual(manager.sources['faces']['state'], 'running')
+
     def test_import_progress_exposes_only_counters_and_detects_stale_phase(self):
         from datetime import UTC, datetime, timedelta
         result = public_phase({"source": "archives", "phase": "messages", "status": "running",

@@ -1,10 +1,16 @@
-name: Source validation
+name: CI and desktop releases
 
 on:
   push:
     branches: [main]
+    tags: ['v[0-9]*']
   pull_request:
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish an experimental release after all checks pass
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -16,6 +22,7 @@ concurrency:
 jobs:
   api:
     name: PostgreSQL API (${{ matrix.timezone }})
+    timeout-minutes: 25
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -66,11 +73,11 @@ jobs:
         run: uv run python -m app.city_reference
       - name: Test API and WAL history
         working-directory: services/api
-        run: uv run pytest -q
+        run: uv run pytest -q --timeout=120 -o faulthandler_timeout=110
       - name: Test desktop runtime and source bundle contracts
         run: uv run --project services/api python -m unittest discover -s apps/desktop/tests -p 'test_*.py' -v
       - name: Test collector fixtures
-        run: uv run --project services/api pytest apps/desktop/collectors/tests -q
+        run: uv run --project apps/desktop/collectors --frozen --python 3.12 pytest apps/desktop/collectors/tests -q
 
   web:
     name: Web and settings type checks
@@ -96,3 +103,99 @@ jobs:
           go-version: '1.25.x'
           cache: false
       - run: go test infra/wechat/chatlog/sns_download.go infra/wechat/chatlog/sns_download_test.go
+
+  desktop:
+    name: macOS 26 Apple Silicon app
+    runs-on: macos-26
+    timeout-minutes: 90
+    env:
+      CARGO_BUILD_JOBS: 2
+      CARGO_PROFILE_RELEASE_DEBUG: 0
+      MACOSX_DEPLOYMENT_TARGET: '26.0'
+      HOMEBREW_NO_AUTO_UPDATE: 1
+      NEXT_TELEMETRY_DISABLED: 1
+      PYTHONDONTWRITEBYTECODE: 1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.5'
+          cache: false
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: apps/desktop/runtime-requirements.txt
+      - name: Prepare native build tools
+        run: |
+          test "$(uname -m)" = arm64
+          rustup toolchain install 1.92.0 --profile minimal
+          rustup override set 1.92.0
+          brew install postgresql@16
+          uv python install 3.12.11
+          df -h .
+      - name: Install JavaScript dependencies
+        run: npm ci
+      - name: Build patched public Chatlog source
+        run: apps/desktop/patches/chatlog/build.sh "$PWD/apps/desktop/.build/chatlog-alpha"
+      - name: Assemble private runtime without face weights
+        run: |
+          uv run --no-project --python 3.12.11 python apps/desktop/scripts/bundle_runtime.py \
+            --chatlog-binary "$PWD/apps/desktop/.build/chatlog-alpha" \
+            --postgres-prefix "$(brew --prefix postgresql@16)" \
+            --external-face-models
+      - name: Build ad-hoc signed app
+        run: npm run build:desktop
+      - name: Verify relocated application and record public reports
+        run: |
+          mkdir -p .local-validation/release-reports
+          app="$PWD/apps/desktop/src-tauri/target/release/bundle/macos/Monica.app"
+          runtime="$app/Contents/Resources/runtime"
+          "$runtime/python/bin/python3" -B -I apps/desktop/scripts/verify_runtime.py \
+            --bundle-root "$runtime" --report .local-validation/release-reports/runtime.json
+          "$runtime/python/bin/python3" -B apps/desktop/scripts/smoke_runtime.py \
+            --bundle-root "$runtime" --work-dir "$RUNNER_TEMP/Monica CI Smoke"
+          cp "$RUNNER_TEMP/Monica CI Smoke/results.json" .local-validation/release-reports/smoke.json
+          codesign --verify --deep --strict "$app"
+      - name: Create checked release archive
+        run: |
+          uv run --no-project --python 3.12.11 python apps/desktop/scripts/release_desktop.py package \
+            --sha "$GITHUB_SHA" --directory .local-validation/release-assets \
+            --app apps/desktop/src-tauri/target/release/bundle/macos/Monica.app \
+            --reports .local-validation/release-reports
+      - uses: actions/upload-artifact@v4
+        with:
+          name: monica-macos-arm64
+          path: .local-validation/release-assets/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+
+  publish:
+    name: Publish experimental GitHub Release
+    needs: [api, web, chatlog-media, desktop]
+    if: >-
+      github.event_name != 'pull_request' &&
+      (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) &&
+      (github.event_name != 'workflow_dispatch' || inputs.publish)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: monica-macos-arm64
+          path: release-assets
+      - name: Verify and publish this exact source build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 apps/desktop/scripts/release_desktop.py publish --sha "$GITHUB_SHA" --directory release-assets

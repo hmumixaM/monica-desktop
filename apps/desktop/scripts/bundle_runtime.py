@@ -205,6 +205,15 @@ def copy_sources():
     shutil.copy2(ROOT / "infra/snapshot_publish.py", OUT / "infra/snapshot_publish.py")
 
 
+def configure_face_contract(external):
+    contract = json.loads((DESKTOP / "runtime/capabilities.json").read_text())
+    models = [name for name in contract['capabilities']['faces'] if name.endswith('.onnx')]
+    contract['face_models'] = {'mode': 'external' if external else 'bundled', 'files': models}
+    if external:
+        contract['capabilities']['faces'] = [name for name in contract['capabilities']['faces'] if name not in models]
+    (OUT / 'capabilities.json').write_text(json.dumps(contract, indent=2) + '\n')
+
+
 def build_city_reference():
     env = dict(os.environ, PYTHONHOME=str(OUT / "python"), PYTHONPATH=str(OUT / "api"), PYTHONNOUSERSITE="1", PYTHONDONTWRITEBYTECODE="1")
     run([OUT / "python/bin/python3", "-m", "app.city_reference"], env=env)
@@ -222,7 +231,12 @@ def bundle_web(skip):
     copytree(ROOT / "apps/web/public", OUT / "web/apps/web/public")
 
 
-def bundle_faces(models):
+def bundle_faces(models, external=False):
+    if external:
+        # Public releases load user-supplied weights from the private data root.
+        # Clear stale weights when reusing a local assembly directory.
+        shutil.rmtree(OUT / 'models/insightface', ignore_errors=True)
+        return {'mode': 'external'}
     source = models / "buffalo_l"
     destination = OUT / "models/insightface/models/buffalo_l"
     destination.mkdir(parents=True, exist_ok=True)
@@ -261,11 +275,16 @@ def main():
     parser.add_argument("--postgres-prefix", type=Path, default=Path("/opt/homebrew/opt/postgresql@16"))
     parser.add_argument("--chatlog-binary", type=Path)
     parser.add_argument("--face-models", type=Path, default=Path.home() / ".insightface/models")
+    parser.add_argument("--external-face-models", action="store_true", help="Keep face code but require user-supplied model weights")
     parser.add_argument("--skip-web-build", action="store_true")
     parser.add_argument("--sources-only", action="store_true")
     args = parser.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
+    previous = OUT / 'manifest.json'
+    external = args.external_face_models or (args.sources_only and previous.exists()
+        and json.loads(previous.read_text()).get('face_models', {}).get('mode') == 'external')
     copy_sources()
+    configure_face_contract(external)
     if args.sources_only:
         if (OUT / "python/bin/python3").exists():
             build_city_reference()
@@ -280,7 +299,7 @@ def main():
     if not (OUT / "chatlog/chatlog").is_file():
         raise RuntimeError("Supply --chatlog-binary built from the versioned desktop patch")
     manifest["chatlog"] = {"sha256": sha256(OUT / "chatlog/chatlog")}
-    manifest["face_models"] = bundle_faces(args.face_models)
+    manifest["face_models"] = bundle_faces(args.face_models, external)
     build_city_reference()
     env = dict(os.environ, PLAYWRIGHT_BROWSERS_PATH=str(OUT / "browsers"), PYTHONNOUSERSITE="1")
     run([OUT / "python/bin/python3", "-m", "playwright", "install", "chromium"], env=env)

@@ -46,6 +46,7 @@ const stateLabels: Record<string, string> = {
   collecting: "正在采集",
   connecting: "正在连接",
   not_configured: "未连接",
+  needs_models: "需要人脸模型",
   disconnected: "未连接",
   completed: "已完成",
   backoff: "等待重试",
@@ -825,7 +826,7 @@ export default function App() {
                 </Section>
                 <Section
                   title="照片里的人"
-                  description="使用应用内置模型在本机识别人脸，随后在 Monica 中确认人物。"
+                  description="使用本机已安装的人脸模型识别，随后在 Monica 中确认人物。公开发行版需自行提供模型。"
                 >
                   <SourceState status={source("faces")} />
                   <Toggle
