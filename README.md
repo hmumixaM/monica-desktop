@@ -2,7 +2,7 @@
 
 一个在 Mac 本地运行的个人关系管理实验项目。用 Tauri 提供菜单栏和最小设置界面，主体继续使用 Next.js Web；FastAPI、PostgreSQL、采集器和后台任务由应用管理。
 
-最终 `.app` 的使用者不需要 Docker、Homebrew、Python、Node.js 或 PostgreSQL。当前目标为 **Apple Silicon / macOS 26+**。本仓库提供源码和构建脚本，尚未发布经过 Developer ID 签名及公证的安装包。
+最终 `.app` 的使用者不需要 Docker、Homebrew、Python、Node.js 或 PostgreSQL。当前目标为 **Apple Silicon / macOS 26+**。实验版下载见 [GitHub Releases](https://github.com/hmumixaM/monica-desktop/releases)。公开构建使用 ad-hoc 签名，尚未经过 Developer ID 签名与公证。
 
 ## 功能
 
@@ -30,13 +30,13 @@ apps/desktop/patches/chatlog/build.sh "$PWD/apps/desktop/.build/chatlog-alpha"
 uv run --no-project --python 3.12.11 python apps/desktop/scripts/bundle_runtime.py \
   --chatlog-binary "$PWD/apps/desktop/.build/chatlog-alpha" \
   --postgres-prefix /opt/homebrew/opt/postgresql@16 \
-  --face-models "$HOME/.insightface/models"
+  --external-face-models
 
 npm run build:desktop
 ```
 
 应用产物位于 `apps/desktop/src-tauri/target/release/bundle/macos/Monica.app`。
-`--face-models` 指向包含 `buffalo_l/det_10g.onnx`、`buffalo_l/w600k_r50.onnx` 的目录；模型权重和组装后的运行时不在 Git 中。
+公开构建保留人脸识别代码，模型由用户本机提供。个人使用的模型内置版本可用 `--face-models "$HOME/.insightface/models"` 替代 `--external-face-models`。
 
 ## 首次使用与数据
 
@@ -68,4 +68,4 @@ Web/API 只监听 loopback。数据默认保存在 `~/Library/Application Suppor
 
 最近一次本机验证：517 项后端测试、17 项运行时与打包合约测试、11 项采集器测试、7 项设置界面测试，以及安装包独立启动、Web 历史详情、暂停恢复和退出清理。测试使用独立数据库与本地样例，不代表真实平台的采集吞吐量。
 
-CI 只运行源码检查和测试。它不部署 NAS，也不发布生产镜像。
+CI 会验证源码、测试两个时区的 PostgreSQL 行为，并在 macOS 26 Apple Silicon runner 上构建和验证应用。`main` 全部通过后自动发布独立的 `preview-<commit>` 实验版；`v<应用版本>` 标签发布对应版本的实验版。详见 [CI/CD 与发行说明](docs/DESKTOP_RELEASES.md)。此流程不部署 NAS。

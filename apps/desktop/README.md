@@ -7,7 +7,7 @@ Monica Desktop 将现有 Monica Web 和后台程序装进一个 macOS 菜单栏�
 ## 运行方式
 
 应用内包含 Python 3.12、Node.js、PostgreSQL 16、Caddy、Chromium、Chatlog Alpha
-以及采集器和人脸识别模型。Web/API 只监听 `127.0.0.1`，默认浏览器入口为
+以及采集器和人脸识别代码。公开发行版使用本机提供的人脸模型，个人构建也可内置模型。Web/API 只监听 `127.0.0.1`，默认浏览器入口为
 `http://127.0.0.1:17394`；端口冲突时会选用空闲端口，以应用显示的地址为准。
 
 PostgreSQL 保留现有 CRM 和微信、Instagram、LinkedIn 四个独立数据库。
