@@ -15,9 +15,21 @@ class BundleContractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             (root / 'capabilities.json').write_text(json.dumps({'capabilities': {}, 'face_models': {'mode': 'external'}}))
-            (root / 'model.onnx').write_bytes(b'private-weight-fixture')
+            (root / 'models').mkdir()
+            (root / 'models/model.onnx').write_bytes(b'private-weight-fixture')
             with self.assertRaisesRegex(ValueError, 'includes model weights'):
                 verifier.verify_files(root)
+
+    def test_onnx_library_operator_fixtures_are_allowed(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / 'capabilities.json').write_text(json.dumps({'capabilities': {}, 'face_models': {'mode': 'external'}}))
+            directory = root / 'python/onnx/backend/test'
+            directory.mkdir(parents=True)
+            (directory / 'add.onnx').write_bytes(b'operator-test-fixture')
+            (root / 'collectors').mkdir()
+            (root / 'collectors/VENDORED_SOURCES.json').write_text('{"sources": []}')
+            self.assertEqual(verifier.verify_files(root)[1], 0)
 
     def test_missing_crawler_or_external_symlink_fails_packaging(self):
         with tempfile.TemporaryDirectory() as folder, tempfile.TemporaryDirectory() as other:

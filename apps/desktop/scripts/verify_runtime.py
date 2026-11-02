@@ -12,8 +12,12 @@ from pathlib import Path
 def verify_files(root):
     root = root.resolve()
     contract = json.loads((root / "capabilities.json").read_text())
-    if contract.get('face_models', {}).get('mode') == 'external' and any(root.rglob('*.onnx')):
-        raise ValueError('External-model release unexpectedly includes model weights')
+    if contract.get('face_models', {}).get('mode') == 'external':
+        # ONNX itself ships small operator-test fixtures. Only application
+        # models and the face weight filenames are excluded from this build.
+        for path in root.rglob('*.onnx'):
+            if path.is_relative_to(root / 'models') or path.name in ('det_10g.onnx', 'w600k_r50.onnx'):
+                raise ValueError('External-model release unexpectedly includes model weights')
     for capability, paths in contract["capabilities"].items():
         for name in paths:
             path = root / name
