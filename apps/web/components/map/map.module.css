@@ -1,0 +1,41 @@
+.places { display: grid; gap: var(--space-3); min-inline-size: 0; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2);
+  & select { inline-size: auto; min-inline-size: 7.5em; } }
+.spacer { flex: 1; }
+.canvas {
+  position: relative; block-size: clamp(240px, 34vw, 360px); overflow: hidden;
+  border-radius: var(--radius-media); background: var(--map-water);
+  & :global(.maplibregl-ctrl-group) { border-radius: var(--radius-control); background: var(--color-surface); box-shadow: var(--shadow-float); }
+  & :global(.maplibregl-ctrl-group button + button) { border-block-start-color: var(--color-rule); }
+  & :global(.maplibregl-ctrl-icon) { filter: var(--map-control-filter, none); }
+  & :global(.maplibregl-ctrl-attrib) { background: color-mix(in oklab, var(--color-surface) 80%, transparent); color: var(--color-text-faint); font-size: 10px; }
+  & :global(.maplibregl-ctrl-attrib a) { color: inherit; }
+}
+:global(html[data-theme="dark"]) .canvas { --map-control-filter: invert(1); }
+@media (prefers-color-scheme: dark) { :global(html:not([data-theme="light"])) .canvas { --map-control-filter: invert(1); } }
+
+.popup {
+  & :global(.maplibregl-popup-content) { padding: 4px 8px; border-radius: var(--radius-chip); background: var(--color-text); color: var(--color-surface);
+    font-size: var(--text-xs); font-weight: 600; box-shadow: none; }
+  & :global(.maplibregl-popup-tip) { display: none; }
+}
+
+.placeChips {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  & button { display: inline-flex; align-items: baseline; gap: 6px; padding: 4px 10px; border: 1px solid var(--color-rule); border-radius: var(--radius-chip);
+    background: var(--color-surface); color: var(--color-text-soft); font-size: var(--text-xs); }
+  & button:hover { border-color: var(--color-rule-strong); color: var(--color-text); }
+  & button[aria-pressed="true"] { border-color: var(--color-text); color: var(--color-text); }
+  & small { color: var(--color-text-faint); }
+}
+.detail {
+  display: grid; gap: var(--space-2); padding: var(--space-3) var(--space-4); border-radius: var(--radius-control); background: var(--color-tint);
+  & header { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2); }
+  & header small { color: var(--color-text-faint); font-size: var(--text-xs); font-variant-numeric: tabular-nums; }
+  & header a { margin-inline-start: auto; color: var(--color-text-soft); font-size: var(--text-xs); text-decoration: underline; text-underline-offset: 3px; }
+  & ol { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: var(--text-sm); }
+  & li { display: flex; gap: var(--space-2); min-inline-size: 0; }
+  & li > :last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  & time { flex: none; color: var(--color-text-faint); font-variant-numeric: tabular-nums; }
+  & a:hover { text-decoration: underline; text-underline-offset: 3px; }
+}

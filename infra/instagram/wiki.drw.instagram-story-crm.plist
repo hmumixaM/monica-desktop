@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>wiki.drw.instagram-story-crm</string>
+	<key>LowPriorityIO</key>
+	<true/>
+	<key>Nice</key>
+	<integer>10</integer>
+	<key>ProcessType</key>
+	<string>Background</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/usr/bin/python3</string>
+		<string>/Users/max/instagram-archive/publish-stories-crm.py</string>
+		<string>--root</string>
+		<string>/Users/max/instagram-archive</string>
+	</array>
+	<key>RunAtLoad</key>
+	<false/>
+	<key>StandardErrorPath</key>
+	<string>/Users/max/instagram-archive/logs/story-crm-publish.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/max/instagram-archive/logs/story-crm-publish.log</string>
+	<key>StartInterval</key>
+	<integer>86400</integer>
+</dict>
+</plist>

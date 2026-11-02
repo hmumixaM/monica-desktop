@@ -1,0 +1,38 @@
+.attachments { display: grid; gap: var(--space-2); min-inline-size: 0; }
+.files { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none;
+  & li { display: flex; align-items: center; gap: var(--space-2); min-inline-size: 0; padding: 6px 6px 6px 10px;
+    border: 1px solid var(--color-rule); border-radius: var(--radius-control); background: var(--color-surface); color: var(--color-text-soft); }
+  & li > a:not(.fileAction) { display: flex; align-items: baseline; gap: var(--space-2); flex: 1; min-inline-size: 0; color: var(--color-text); font-size: var(--text-sm); }
+  & li > a:not(.fileAction):hover span { text-decoration: underline; text-underline-offset: 3px; }
+  & span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  & small { flex: none; color: var(--color-text-faint); font-size: var(--text-xs); }
+}
+.fileAction { display: grid; place-items: center; flex: none; inline-size: 26px; block-size: 26px; padding: 0; border: 0; border-radius: var(--radius-control);
+  background: none; color: var(--color-text-faint); cursor: pointer;
+  &:hover { background: var(--color-tint); color: var(--color-text); }
+  &:is(button):hover { color: var(--color-danger); } }
+.grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 6px;
+  & figure { position: relative; margin: 0; aspect-ratio: 1; overflow: hidden; border-radius: var(--radius-control); background: var(--color-sunken); }
+  & img, & video { inline-size: 100%; block-size: 100%; object-fit: cover; }
+  & a { display: block; block-size: 100%; cursor: zoom-in; }
+}
+.remove {
+  position: absolute; inset-block-start: 4px; inset-inline-end: 4px; display: grid; place-items: center; inline-size: 24px; block-size: 24px;
+  padding: 0; border: 0; border-radius: 50%; background: rgb(10 12 16 / .6); color: #fff;
+  &:hover { background: var(--color-danger); }
+}
+.picker { display: grid; gap: var(--space-2);
+  & small { color: var(--color-text-faint); font-size: var(--text-xs); }
+  & p { font-size: var(--text-sm); color: var(--color-text-soft); }
+  & p[role="alert"] { color: var(--color-danger); } }
+.drop {
+  position: relative; display: flex; align-items: center; justify-content: center; gap: var(--space-2); min-block-size: 56px;
+  border: 1px dashed var(--color-rule-strong); border-radius: var(--radius-panel); background: var(--color-surface); color: var(--color-text-soft);
+  font-size: var(--text-sm); cursor: pointer;
+  & input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  &:hover, &:focus-within { border-color: var(--color-text-faint); color: var(--color-text); }
+  &[data-busy] { opacity: .6; cursor: progress; }
+}
+.editor { display: grid; gap: var(--space-2); padding: var(--space-3); border-radius: var(--radius-panel); background: var(--color-tint); }
+.actions { display: flex; justify-content: flex-end; gap: var(--space-1); }

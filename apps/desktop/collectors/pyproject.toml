@@ -1,0 +1,14 @@
+[project]
+name = "monica-desktop-collectors"
+version = "0.1.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "instaloader==4.15.3",
+  "playwright==1.62.0",
+  "pydantic==2.13.4",
+  "linkedin-scraper @ git+https://github.com/joeyism/linkedin_scraper.git@b1cdc1c0e85bee8764d62565d229c682e5eb81bb",
+  "linkedin-cli @ git+https://github.com/darwincr/linkedin-cli.git@004e06a002ecf79c8ca1161c1e1d12487329bc90",
+]
+
+[tool.uv]
+package = false

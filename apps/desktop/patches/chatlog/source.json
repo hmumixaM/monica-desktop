@@ -1,0 +1,13 @@
+{
+  "repository": "https://github.com/waawei/chatlog_alpha.git",
+  "upstream": "https://github.com/waawei/chatlog_alpha.git",
+  "commit": "53ab86b7fe3c01a08b312d34d7b3d866e34a721e",
+  "patch": "desktop.patch",
+  "license": "MIT",
+  "target": "darwin/arm64",
+  "cgo": true,
+  "go_minimum": "1.24.0",
+  "validated_go": "go1.25.5",
+  "patch_sha256": "ccdeb40f9efed06a80c6c7a9ff77109d5bf984ca6e74a0f5f3d9f074fee7e069",
+  "adaptation": "Includes contact metadata API updates and the Monica desktop service adapter."
+}

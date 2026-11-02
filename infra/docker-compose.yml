@@ -1,0 +1,270 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-crm}
+      POSTGRES_USER: ${POSTGRES_USER:-crm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  api:
+    image: monica-next-api:${IMAGE_TAG:-ci}
+    build:
+      context: ..
+      dockerfile: services/api/Dockerfile
+      target: api
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-crm}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-crm}
+      RAW_ROOT: /data/raw
+      MEDIA_ROOT: /data/media
+      SESSION_SECRET: ${SESSION_SECRET:-change-me-in-production}
+      IMPORT_HMAC_SECRET: ${IMPORT_HMAC_SECRET:-change-me-in-production}
+      IMPORT_HMAC_SECRETS: ${IMPORT_HMAC_SECRETS:-}
+      LINKEDIN_COLLECTION_TOKEN: ${LINKEDIN_COLLECTION_TOKEN:-}
+      APP_ENV: ${APP_ENV:-development}
+      CHATLOG_ALPHA_URL: ${CHATLOG_ALPHA_URL:-http://host.docker.internal:5030}
+      AI_ENABLED: ${AI_ENABLED:-false}
+      AI_POST_MEDIA_SINCE: ${AI_POST_MEDIA_SINCE:-2026-06-01}
+      LITELLM_BASE_URL: ${LITELLM_BASE_URL:-http://host.docker.internal:4000/v1}
+      LITELLM_API_KEY: ${LITELLM_API_KEY:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ${DATA_ROOT:-./volumes/data}/raw:/data/raw
+      - ${DATA_ROOT:-./volumes/data}/media:/data/media
+      - ${DATA_ROOT:-./volumes/data}/staging:/data/staging
+      - ${DATA_ROOT:-./volumes/data}/exports:/data/exports
+      - ${CHATLOG_CACHE_ROOT:-./volumes/sns-cache}:/data/sns-cache:ro
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  migrate:
+    image: monica-next-api:${IMAGE_TAG:-ci}
+    build:
+      context: ..
+      dockerfile: services/api/Dockerfile
+      target: api
+    command: ["uv", "run", "python", "-m", "app", "migrate"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-crm}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-crm}
+      RAW_ROOT: /data/raw
+      MEDIA_ROOT: /data/media
+      SESSION_SECRET: ${SESSION_SECRET:-change-me-in-production}
+      IMPORT_HMAC_SECRET: ${IMPORT_HMAC_SECRET:-change-me-in-production}
+      IMPORT_HMAC_SECRETS: ${IMPORT_HMAC_SECRETS:-}
+      APP_ENV: ${APP_ENV:-development}
+    volumes:
+      - ${DATA_ROOT:-./volumes/data}/raw:/data/raw
+      - ${DATA_ROOT:-./volumes/data}/media:/data/media
+      - ${DATA_ROOT:-./volumes/data}/staging:/data/staging
+      - ${DATA_ROOT:-./volumes/data}/exports:/data/exports
+      - ${CHATLOG_CACHE_ROOT:-./volumes/sns-cache}:/data/sns-cache:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  linkedin-sync:
+    stop_grace_period: 16m
+    image: monica-next-api:${IMAGE_TAG:-ci}
+    command: ["uv", "run", "python", "-m", "app.sync_linkedin", "--source", "/data/raw/linkedin/linkedin_enrichment.incoming.json", "--watch"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-crm}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-crm}
+      RAW_ROOT: /data/raw
+      MEDIA_ROOT: /data/media
+    volumes:
+      - ${DATA_ROOT:-./volumes/data}/raw:/data/raw
+      - ${DATA_ROOT:-./volumes/data}/media:/data/media
+      - ${DATA_ROOT:-./volumes/data}/staging:/data/staging
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+
+  instagram-story-sync:
+    stop_grace_period: 16m
+    image: monica-next-api:${IMAGE_TAG:-ci}
+    command: ["/app/.venv/bin/python", "-u", "-m", "app.sync_instagram_stories", "--watch", "--interval", "${STORY_SYNC_SECONDS:-28800}"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-crm}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-crm}
+      RAW_ROOT: /data/raw
+      MEDIA_ROOT: /data/media
+      AI_ENABLED: ${AI_ENABLED:-false}
+      AI_POST_MEDIA_SINCE: ${AI_POST_MEDIA_SINCE:-2026-06-01}
+    volumes:
+      - ${DATA_ROOT:-./volumes/data}/raw:/data/raw
+      - ${DATA_ROOT:-./volumes/data}/media:/data/media
+      - ${DATA_ROOT:-./volumes/data}/staging:/data/staging
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+
+  archive-sync:
+    stop_grace_period: 16m
+    image: monica-next-api:${IMAGE_TAG:-ci}
+    command: ["uv", "run", "python", "-m", "app.sync_archives"]
+    environment:
+      DB_POOL_SIZE: "4"
+      DB_MAX_OVERFLOW: "0"
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-crm}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-crm}
+      RAW_ROOT: /data/raw
+      MEDIA_ROOT: /data/media
+      AI_ENABLED: ${AI_ENABLED:-false}
+      AI_POST_MEDIA_SINCE: ${AI_POST_MEDIA_SINCE:-2026-06-01}
+      ARCHIVE_SYNC_SECONDS: "300"
+      WECHAT_PREFETCH_SCRIPT: /app/wechat/prefetch-sns-images.py
+      WECHAT_PREFETCH_LIMIT: "1000000"
+      WECHAT_MOMENTS_SINCE: "1789707600"
+      WECHAT_MEDIA_IMPORT_QUEUE: /data/sns-cache/media-import-queue.jsonl
+      CHATLOG_BASE_URL: http://host.docker.internal:5030
+    volumes:
+      - ${DATA_ROOT:-./volumes/data}/raw:/data/raw
+      - ${DATA_ROOT:-./volumes/data}/media:/data/media
+      - ${DATA_ROOT:-./volumes/data}/staging:/data/staging
+      - ${CHATLOG_DB_ROOT:-./volumes/chatlog}:/data/chatlog:ro
+      - ${CHATLOG_CACHE_ROOT:-./volumes/sns-cache}:/data/sns-cache
+      - ${CHATLOG_ALPHA_ROOT:-./volumes/chatlog-alpha}:/data/chatlog-alpha
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker: &worker
+    image: monica-next-worker:${IMAGE_TAG:-ci}
+    build:
+      context: ..
+      dockerfile: services/api/Dockerfile
+      target: worker
+    stop_grace_period: 16m
+    environment: &worker_environment
+      WORKER_RESOURCE: db
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-crm}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-crm}
+      MEDIA_ROOT: /data/media
+      AI_ENABLED: ${AI_ENABLED:-false}
+      AI_POST_MEDIA_SINCE: ${AI_POST_MEDIA_SINCE:-2026-06-01}
+      LITELLM_BASE_URL: ${LITELLM_BASE_URL:-http://host.docker.internal:4000/v1}
+      LITELLM_API_KEY: ${LITELLM_API_KEY:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ${DATA_ROOT:-./volumes/data}/staging:/data/staging
+      - ${DATA_ROOT:-./volumes/data}/media:/data/media
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+
+  worker-ai:
+    <<: *worker
+    environment:
+      <<: *worker_environment
+      WORKER_RESOURCE: ai
+  worker-media:
+    <<: *worker
+    environment:
+      <<: *worker_environment
+      WORKER_RESOURCE: media
+  worker-media-2:
+    <<: *worker
+    environment:
+      <<: *worker_environment
+      WORKER_RESOURCE: media
+  scheduler:
+    <<: *worker
+    environment:
+      <<: *worker_environment
+      WORKER_RESOURCE: scheduler
+  image-ocr:
+    image: monica-next-api:${IMAGE_TAG:-ci}
+    command: ["/app/.venv/bin/python", "-u", "-m", "app.ai.image_ocr"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-crm}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-crm}
+      MEDIA_ROOT: /data/media
+      AI_ENABLED: ${AI_ENABLED:-false}
+      CRM_TIMEZONE: ${CRM_TIMEZONE:-America/Chicago}
+      LITELLM_BASE_URL: ${LITELLM_BASE_URL:-http://host.docker.internal:4000/v1}
+      LITELLM_API_KEY: ${LITELLM_API_KEY:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ${DATA_ROOT:-./volumes/data}/media:/data/media:ro
+      - ${DATA_ROOT:-./volumes/data}/staging:/data/staging
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    stop_grace_period: 11m
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+
+  web:
+    image: monica-next-web:${IMAGE_TAG:-ci}
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://api:8000}
+      API_INTERNAL_URL: ${API_INTERNAL_URL:-http://api:8000}
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  reverse-proxy:
+    image: caddy:2-alpine
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+      - "${HTTPS_PORT:-8443}:443"
+    environment:
+      CRM_SCHEME: ${CRM_SCHEME:-http}
+      CRM_HOST: ${CRM_HOST:-localhost}
+      CRM_TAILSCALE_HOST: ${CRM_TAILSCALE_HOST:-nas.example.invalid}
+    volumes:
+      - ./${CADDYFILE:-Caddyfile}:/etc/caddy/Caddyfile:ro
+      - ${CERT_ROOT:-./volumes/certs}:/certs:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+      - api
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:

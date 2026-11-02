@@ -1,0 +1,290 @@
+{
+  "date": "2026-10-26",
+  "platform": "darwin/arm64",
+  "minimum_macos": "26.0",
+  "app_version": "0.1.0",
+  "app_build": "passed",
+  "signing": "local ad-hoc; deep strict verification passed",
+  "notarized": false,
+  "installed_app_smoke": {
+    "runtime_relocated_outside_checkout": true,
+    "child_path_excludes_homebrew": true,
+    "fresh_four_database_initialization": "passed",
+    "occupied_web_port_fallback": "passed",
+    "bootstrap_login_cookie_web": "passed",
+    "origin_and_csrf_rejections": "passed",
+    "save_while_paused_no_background_start": "passed",
+    "resume_wake_ai_disabled": "passed",
+    "unexpected_database_exit_and_tree_recovery": "passed",
+    "graceful_shutdown_no_owned_services": "passed",
+    "bundled_chromium_launch_render": "passed",
+    "native_app_launch": "passed",
+    "native_window_click_check": "passed: pause, resume, configuration picker/cancel, source/model/general tabs, open Web, quit and restart",
+    "native_ui_recovery": "foreground status heartbeat with 30 second reload and hidden/unfocused grace period",
+    "technical_input_correction": "passed: original lowercase model name and unsaved input retained after 35 seconds",
+    "final_native_quit": "passed: shell, supervisor and all recorded service owners exited; control file removed",
+    "immediate_native_reopen": "passed"
+  },
+  "tests": {
+    "runtime": 12,
+    "repeated_cooperative_stop_subprocess": "passed",
+    "settings_browser": 5,
+    "native_ui_recovery": 2,
+    "backend_targeted": 70,
+    "collector_fixtures": 6,
+    "linkedin_repair_fixtures": 40,
+    "wechat_prefetch_policy": 15,
+    "insightface_bundled_models_cpu_inference": "passed",
+    "native_binaries_libraries_audited": 545,
+    "non_system_absolute_load_dependencies": 0
+  },
+  "real_wechat_crm_import": {
+    "isolated_validation_database": true,
+    "profiles": 1179,
+    "moments_posts": 54557,
+    "messages_at_cooperative_stop": 45000,
+    "all_history_imported": false,
+    "pause_and_shutdown": "passed",
+    "user_data_or_credentials_in_bundle": false
+  },
+  "external_credentials_not_enrolled": [
+    "Instagram",
+    "LinkedIn",
+    "model API"
+  ],
+  "last_updated": "2026-11-01",
+  "import_optimization": {
+    "date": "2026-10-28",
+    "database_integration_tests": 35,
+    "runtime_tests": 14,
+    "settings_tests": 6,
+    "contacts_before_moments_and_same_pass_author_updates": "passed",
+    "snapshot_ready_and_changed_notifications": "passed",
+    "message_progress_after_commit_and_private_detail_filter": "passed",
+    "requested_scan_pause_is_pending_not_failed": "passed",
+    "installed_runtime_long_path_smoke": [
+      "fresh database initialization and occupied-port fallback",
+      "account bootstrap, HTTP session, authenticated API, Web, Origin and CSRF",
+      "pause and settings save do not restart background jobs",
+      "resume and sleep recovery with AI disabled",
+      "database loss detection and complete dependency-tree recovery",
+      "graceful shutdown without surviving owned services"
+    ],
+    "signature_verification": "passed",
+    "daily_application_stopped": true
+  },
+  "collector_parity": {
+    "date": "2026-10-29",
+    "nas_access": "read-only; active Caddy routes and deployed importer source inspected; no mutation or restart",
+    "nas_baseline_commit": "feb0dcf8e8ed95b1b46474ab8f7db5955e597efb",
+    "nas_identical_core_files": [
+      "instagram_posts.py",
+      "linkedin_import.py",
+      "archive_linkedin.py",
+      "archive_media.py",
+      "wechat_contacts.py",
+      "source_time.py",
+      "platform_schema.sql"
+    ],
+    "desktop_adapter_files": [
+      "import_messages.py",
+      "reconcile_sources.py",
+      "sync_archives.py",
+      "sync_linkedin.py",
+      "sync_instagram_stories.py",
+      "source_projection.py"
+    ],
+    "desktop_adapter_scope": [
+      "portable source roots",
+      "fresh account initialization",
+      "progress and cooperative pause",
+      "local scheduling and wake notifications",
+      "conservative local prefetch budget"
+    ],
+    "installed_source_files_match_workspace": 16,
+    "nas_live_data_migrated": false,
+    "tests": {
+      "backend_database_regression": 185,
+      "additional_returned_checkpoint_states": 2,
+      "collector_fixtures": 11,
+      "runtime_and_bundle_contract": 16,
+      "ruff_changed_files": "passed",
+      "typescript_and_production_build": "passed"
+    },
+    "bundled_collectors": {
+      "capabilities": [
+        "wechat",
+        "instagram_posts",
+        "instagram_stories",
+        "instagram_highlights",
+        "linkedin",
+        "faces",
+        "local_services"
+      ],
+      "vendored_files_verified": 29,
+      "entrypoint_checks": 9,
+      "packages": {
+        "instaloader": "4.15.3",
+        "playwright": "1.62.0"
+      },
+      "vcs_commits": {
+        "linkedin-cli": "004e06a002ecf79c8ca1161c1e1d12487329bc90",
+        "linkedin-scraper": "b1cdc1c0e85bee8764d62565d229c682e5eb81bb"
+      },
+      "chromium": "passed",
+      "importer_modules": "passed"
+    },
+    "performance": {
+      "scope": "Local synthetic publication I/O; excludes provider requests and full CRM import latency",
+      "fixture": {
+        "asset_urls": 256,
+        "unique_files": 8,
+        "unique_bytes": 8388608
+      },
+      "previous_linkedin_checksum_bytes_per_pass": 268435456,
+      "current_linkedin_checksum_bytes_first_pass": 8388608,
+      "current_linkedin_checksum_bytes_unchanged_pass": 0,
+      "instagram_inventory_scans_per_complete_cycle": {
+        "previous": 12,
+        "current": 3
+      },
+      "corrupt_same_size_asset_with_preserved_mtime_rejected": "passed",
+      "missing_current_reconstruction_without_cursor_loss": "passed"
+    },
+    "installed_app_smoke": {
+      "passed": [
+        "fresh database initialization and occupied-port fallback",
+        "account bootstrap, HTTP session, authenticated API, Web, Origin and CSRF",
+        "pause and settings save do not restart background jobs",
+        "resume and sleep recovery with AI disabled",
+        "database loss detection and complete dependency-tree recovery",
+        "graceful shutdown without surviving owned services"
+      ],
+      "provider_requests": false
+    },
+    "installed_app": "~/Applications/Monica.app",
+    "signature_verification": "codesign --verify --deep --strict passed after runtime checks",
+    "daily_application_stopped": true,
+    "external_live_login_or_recrawl": false
+  },
+  "append_pipeline_and_history": {
+    "date": "2026-11-01",
+    "scope": "macOS experiment; daily data untouched; application stopped",
+    "nas_deployment_or_restart": false,
+    "upstream_import_fix": "PR #36, origin/main 493a05cad60585e90c802182cd595a227377c814; applied to desktop importer source",
+    "live_pipeline": "immutable source batches and narrow durable delivery queue -> unique CRM projection inbox/job -> two projection workers",
+    "history": "native PostgreSQL 16 pgoutput WAL; asynchronous audit only; no projection jobs or live-path dependency",
+    "history_databases": [
+      "wechat",
+      "instagram",
+      "linkedin",
+      "crm"
+    ],
+    "history_idle_poll_seconds": 30,
+    "history_backlog_drain": "bounded batches with one second inter-round wait while appending events",
+    "wal_keep_budget_mb_per_slot": 512,
+    "missing_established_slot": "explicit error, no silent reset; live pipeline continues",
+    "history_ui": "Web /imports: source filter, keyset pagination, committed timestamp, before/after actual field values; large unchanged TOAST values preserved",
+    "locking": {
+      "global_archive_lock": "replaced by independent lane leases",
+      "global_media_catalog_lock": "removed",
+      "unchanged_account_and_asset": "read fast paths, no write lock",
+      "immutable_messages": "unique key append; no per-object history guard",
+      "posts": "shared profile guards; different objects on the same person can project concurrently",
+      "media_url_and_slot": "nonblocking try-lock and whole-transaction rollback/retry",
+      "mutable_fields_and_ownership": "local ordered exclusion preserved",
+      "database_conflict_attempts": 3,
+      "residual_exclusive_account_guards": "legacy bounded message transactions and account avatar rebuild retained",
+      "research": "apps/desktop/LOCKING.md"
+    },
+    "tests": {
+      "full_api_postgresql": 517,
+      "runtime": 15,
+      "bundle_contract": 2,
+      "collector_fixtures": 11,
+      "settings_browser": 7,
+      "typescript_and_production_build": "passed",
+      "large_toast_before_after": "passed on real PostgreSQL",
+      "lost_history_slot_does_not_gate_projection": "passed",
+      "late_sequence_commit_not_lost": "passed",
+      "transactional_delivery_replay": "passed",
+      "blocked_same_row_append_read": "passed with 100ms lock timeout",
+      "mutable_aba_and_distinct_post_concurrency": "passed",
+      "provider_requests_or_model_calls": false,
+      "cdc_and_lock_modules_ruff": "passed"
+    },
+    "installed_app": "~/Applications/Monica.app",
+    "installed_source_files_match_workspace": 230,
+    "installed_capabilities": {
+      "capabilities": [
+        "cdc",
+        "wechat",
+        "instagram_posts",
+        "instagram_stories",
+        "instagram_highlights",
+        "linkedin",
+        "faces",
+        "local_services"
+      ],
+      "vendored_files_verified": 29,
+      "entrypoint_checks": 12,
+      "packages": {
+        "instaloader": "4.15.3",
+        "playwright": "1.62.0"
+      },
+      "vcs_commits": {
+        "linkedin-cli": "004e06a002ecf79c8ca1161c1e1d12487329bc90",
+        "linkedin-scraper": "b1cdc1c0e85bee8764d62565d229c682e5eb81bb"
+      },
+      "chromium": "passed",
+      "importer_modules": "passed"
+    },
+    "installed_app_smoke": {
+      "passed": [
+        "fresh database initialization and occupied-port fallback",
+        "account bootstrap, HTTP session, authenticated API, Web, Origin and CSRF",
+        "independent durable input dispatch/projection and delayed native pgoutput history for four databases",
+        "bundled Chromium: authenticated Web history list, before/after dialog, source filter and narrow layout",
+        "pause and settings save do not restart background jobs",
+        "resume and sleep recovery with AI disabled",
+        "database loss detection and complete dependency-tree recovery",
+        "graceful shutdown without surviving owned services"
+      ],
+      "provider_requests": false
+    },
+    "signature_verification": "codesign --verify --deep --strict passed after installed runtime tests",
+    "daily_application_stopped": true,
+    "limitations": [
+      "history starts at activation; existing revisions retained",
+      "no claim of zero deadlocks or production-load throughput",
+      "real provider login/recrawl and NAS deployment not performed this iteration"
+    ]
+  },
+  "public_source_snapshot": {
+    "date": "2026-11-01",
+    "scope": "Sanitized current-source snapshot; earlier installed-app receipts are historical prototype validation, not a new public binary release.",
+    "git_history": "New initial commit; no private repository history included",
+    "private_records": "Private deployment evidence and one-off account mappings excluded; developer paths and private hostnames generalized; group-message test fixtures anonymized",
+    "private_data_and_runtimes": "Not included",
+    "public_chatlog": {
+      "repository": "https://github.com/waawei/chatlog_alpha.git",
+      "commit": "53ab86b7fe3c01a08b312d34d7b3d866e34a721e",
+      "build_from_public_upstream": "passed",
+      "runtime_source_equivalence_files": 154,
+      "go_test_packages": 5
+    },
+    "local_checks": {
+      "full_api_postgresql_tests": 517,
+      "anonymized_group_speech_fixture_tests": 7,
+      "runtime_and_bundle_contract_tests": 17,
+      "collector_fixture_tests": 11,
+      "api_importer_ruff": "passed",
+      "web_and_desktop_typescript": "passed",
+      "web_production_build": "passed",
+      "vendored_source_digests_verified": 29,
+      "gitleaks": "no leaks in prepared source; full initial commit rechecked before push"
+    },
+    "ci": "Read-only source validation; no NAS deployment or production package publication",
+    "application_state": "Daily app remains stopped"
+  }
+}

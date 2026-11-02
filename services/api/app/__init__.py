@@ -1,0 +1,1 @@
+"""Monica Next CRM API."""

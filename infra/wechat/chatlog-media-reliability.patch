@@ -1,0 +1,134 @@
+--- a/internal/chatlog/http/sns_media.go
++++ b/internal/chatlog/http/sns_media.go
+@@ -5,7 +5,6 @@
+ 	"crypto/md5"
+ 	"encoding/hex"
+ 	"fmt"
+-	"io"
+ 	"net/http"
+ 	"net/url"
+ 	"os"
+@@ -52,41 +51,19 @@
+ 		}
+ 	}
+ 
+-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
++	data, contentType, err := downloadSNSOriginal(ctx, &http.Client{Timeout: 5 * time.Minute}, rawURL)
+ 	if err != nil {
+-		return nil, "", errors.InvalidArg("url")
+-	}
+-	req.Header.Set("User-Agent", "MicroMessenger Client")
+-	req.Header.Set("Accept", "*/*")
+-	req.Header.Set("Connection", "keep-alive")
+-
+-	client := &http.Client{Timeout: 30 * time.Second}
+-	resp, err := client.Do(req)
+-	if err != nil {
+-		return nil, "", errors.OpenFileFailed(rawURL, err)
+-	}
+-	defer resp.Body.Close()
+-
+-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusPartialContent {
+-		return nil, "", errors.QueryFailed(fmt.Sprintf("sns media http status %d", resp.StatusCode), nil)
+-	}
+-
+-	data, err := io.ReadAll(resp.Body)
+-	if err != nil {
+-		return nil, "", errors.ReadFileFailed(rawURL, err)
+-	}
+-	if len(data) == 0 {
+-		return nil, "", errors.QueryFailed("empty sns media response", nil)
+-	}
+-
+-	data, contentType, err := s.decryptSNSMedia(ctx, data, key, resp.Header.Get("Content-Type"))
++		return nil, "", errors.ReadFileFailed("SNS media", err)
++	}
++
++	data, contentType, err = s.decryptSNSMedia(ctx, data, key, contentType)
+ 	if err != nil {
+ 		return nil, "", err
+ 	}
+ 
+ 	if cachePath != "" {
+ 		if err := os.MkdirAll(filepath.Dir(cachePath), 0o755); err == nil {
+-			if writeErr := os.WriteFile(cachePath, data, 0o644); writeErr != nil {
++			if writeErr := storeSNSCache(cachePath, data); writeErr != nil {
+ 				log.Warn().Err(writeErr).Str("path", cachePath).Msg("write sns media cache failed")
+ 			}
+ 		}
+@@ -96,7 +73,7 @@
+ 
+ func (s *Service) decryptSNSMedia(ctx context.Context, data []byte, key, fallbackContentType string) ([]byte, string, error) {
+ 	rawMime := detectSNSMimeStrict(data)
+-	if strings.HasPrefix(rawMime, "image/") {
++	if strings.HasPrefix(rawMime, "image/") || strings.HasPrefix(rawMime, "video/") {
+ 		return data, rawMime, nil
+ 	}
+ 
+@@ -109,6 +86,27 @@
+ 	seed, err := strconv.ParseUint(strings.TrimSpace(key), 10, 64)
+ 	if err != nil {
+ 		return nil, "", errors.QueryFailed("invalid sns media decrypt key", err)
++	}
++
++	// Check the bounded video header before generating an image-sized keystream.
++	videoDec := make([]byte, len(data))
++	copy(videoDec, data)
++	window := len(videoDec)
++	if window > snsVideoDecryptWindow {
++		window = snsVideoDecryptWindow
++	}
++	stream, streamErr := s.getKeystreamPreferWASM(ctx, key, window, true)
++	if streamErr != nil {
++		isaac := newISAAC64(seed)
++		stream = isaac.generateKeystream(window)
++		reverseBytes(stream)
++	}
++	for i := 0; i < window; i++ {
++		videoDec[i] ^= stream[i]
++	}
++	videoMime := detectSNSMime(videoDec, "")
++	if strings.HasPrefix(videoMime, "video/") {
++		return videoDec, videoMime, nil
+ 	}
+ 
+ 	// 先按图片全量 XOR 尝试。实测朋友圈图片同样优先使用 reversed keystream。
+@@ -131,27 +129,6 @@
+ 		if strings.HasPrefix(imgMime, "image/") {
+ 			return imgDec, imgMime, nil
+ 		}
+-	}
+-
+-	// 再按视频头部窗口 XOR 尝试。
+-	videoDec := make([]byte, len(data))
+-	copy(videoDec, data)
+-	window := len(videoDec)
+-	if window > snsVideoDecryptWindow {
+-		window = snsVideoDecryptWindow
+-	}
+-	stream, streamErr := s.getKeystreamPreferWASM(ctx, key, window, true)
+-	if streamErr != nil {
+-		isaac := newISAAC64(seed)
+-		stream = isaac.generateKeystream(window)
+-		reverseBytes(stream)
+-	}
+-	for i := 0; i < window; i++ {
+-		videoDec[i] ^= stream[i]
+-	}
+-	videoMime := detectSNSMime(videoDec, "")
+-	if strings.HasPrefix(videoMime, "video/") {
+-		return videoDec, videoMime, nil
+ 	}
+ 
+ 	return nil, "", errors.QueryFailed("sns media decrypt failed", nil)
+--- a/internal/chatlog/http/service.go
++++ b/internal/chatlog/http/service.go
+@@ -105,7 +105,7 @@
+ 	router.Use(
+ 		errors.RecoveryMiddleware(),
+ 		errors.ErrorHandlerMiddleware(),
+-		gin.LoggerWithWriter(log.Logger, "/health"),
++		gin.LoggerWithWriter(log.Logger, "/health", "/api/v1/sns/media/proxy"),
+ 		corsMiddleware(),
+ 	)
+ 

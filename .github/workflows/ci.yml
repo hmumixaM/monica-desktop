@@ -1,0 +1,98 @@
+name: Source validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: source-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: PostgreSQL API (${{ matrix.timezone }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        timezone: [UTC, America/Chicago]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: crm
+          POSTGRES_PASSWORD: crm-test
+          POSTGRES_DB: crm_test
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U crm -d crm_test" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TZ: ${{ matrix.timezone }}
+      PGOPTIONS: -c timezone=${{ matrix.timezone }}
+      TEST_DATABASE_URL: postgresql+psycopg://crm:crm-test@localhost:5432/crm_test
+      DATABASE_URL: postgresql+psycopg://crm:crm-test@localhost:5432/crm_test
+      PYTHONPATH: ${{ github.workspace }}/apps/desktop/runtime
+      RAW_ROOT: ${{ runner.temp }}/monica-test-raw
+      MEDIA_ROOT: ${{ runner.temp }}/monica-test-media
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: services/api/uv.lock
+      - name: Enable logical WAL for isolated CDC tests
+        run: |
+          docker exec ${{ job.services.postgres.id }} psql -U crm -d crm_test \
+            -c "ALTER SYSTEM SET wal_level='logical'" \
+            -c "ALTER SYSTEM SET max_replication_slots=32"
+          docker restart ${{ job.services.postgres.id }}
+          for attempt in $(seq 1 30); do
+            if docker exec ${{ job.services.postgres.id }} pg_isready -U crm -d crm_test; then exit 0; fi
+            sleep 1
+          done
+          exit 1
+      - name: Install locked API dependencies
+        working-directory: services/api
+        run: uv sync --locked --python 3.12
+      - name: Check API Python
+        working-directory: services/api
+        run: uv run ruff check app tests ../../importers
+      - name: Build offline reference
+        working-directory: services/api
+        run: uv run python -m app.city_reference
+      - name: Test API and WAL history
+        working-directory: services/api
+        run: uv run pytest -q
+      - name: Test desktop runtime and source bundle contracts
+        run: uv run --project services/api python -m unittest discover -s apps/desktop/tests -p 'test_*.py' -v
+      - name: Test collector fixtures
+        run: uv run --project services/api pytest apps/desktop/collectors/tests -q
+
+  web:
+    name: Web and settings type checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint:web
+      - run: npm --workspace apps/desktop run lint
+      - run: npm run build:web
+
+  chatlog-media:
+    name: Chatlog media fixtures
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.x'
+          cache: false
+      - run: go test infra/wechat/chatlog/sns_download.go infra/wechat/chatlog/sns_download_test.go

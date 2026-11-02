@@ -1,0 +1,43 @@
+.page { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(360px, 1fr); min-block-size: 100dvh; background: var(--color-canvas);
+  @media (max-width: 860px) { grid-template-columns: minmax(0, 1fr); } }
+
+/* The left half echoes the 亲疏圈: four rings around 我, drawn in CSS so the page loads nothing extra. */
+.intro { position: relative; display: grid; place-items: center; align-content: center; gap: var(--space-6); overflow: hidden; padding: var(--space-7);
+  background: var(--color-surface); border-inline-end: 1px solid var(--color-rule);
+  & p { margin: 0; color: var(--color-text-soft); font: 600 var(--text-xl) / 1.6 var(--font-display); text-align: center; letter-spacing: .04em; }
+  @media (max-width: 860px) { display: none; } }
+.orbit { position: relative; display: grid; place-items: center; inline-size: min(380px, 70%); aspect-ratio: 1;
+  & i { position: absolute; border: 1px solid var(--color-rule-strong); border-radius: 50%; }
+  & i:nth-child(1) { inset: 38%; background: color-mix(in oklab, var(--gamboge) 18%, transparent); border-color: color-mix(in oklab, var(--gamboge) 60%, transparent); }
+  & i:nth-child(2) { inset: 26%; }
+  & i:nth-child(3) { inset: 13%; border-style: dashed; }
+  & i:nth-child(4) { inset: 0; border-color: var(--color-rule); }
+  & b { position: relative; display: grid; place-items: center; inline-size: 44px; block-size: 44px; border-radius: 50%;
+    background: var(--color-primary); color: var(--color-on-primary); font: 600 var(--text-md) / 1 var(--font-display); }
+  @media (prefers-reduced-motion: no-preference) {
+    & i { animation: ring-in 600ms var(--ease-out) both; }
+    & i:nth-child(2) { animation-delay: 80ms; }
+    & i:nth-child(3) { animation-delay: 160ms; }
+    & i:nth-child(4) { animation-delay: 240ms; }
+  } }
+@keyframes ring-in { from { opacity: 0; transform: scale(.92); } }
+
+.card { display: grid; align-content: center; justify-items: center; gap: var(--space-6); padding: var(--space-7) var(--space-5);
+  @media (max-width: 860px) { align-content: start; padding-block-start: max(12dvh, var(--space-7)); } }
+.brand { display: flex; align-items: center; gap: var(--space-3); inline-size: min(360px, 100%);
+  & > span { display: grid; place-items: center; inline-size: 40px; block-size: 40px; border-radius: 11px;
+    background: var(--color-primary); color: var(--color-on-primary); font: 600 22px / 1 var(--font-display); box-shadow: inset 0 -4px 0 var(--color-accent); }
+  & > div { display: grid; }
+  & strong { font: 600 var(--text-lg) / 1.2 var(--font-display); letter-spacing: .02em; }
+  & small { color: var(--color-text-faint); font-size: var(--text-xs); } }
+
+.form { display: grid; gap: var(--space-4); inline-size: min(360px, 100%);
+  & header { display: grid; gap: 4px; margin-block-end: var(--space-2); }
+  & h1 { margin: 0; font: 600 var(--text-2xl) / 1.2 var(--font-display); }
+  & header p { margin: 0; color: var(--color-text-soft); font-size: var(--text-sm); } }
+.totp { display: grid; gap: var(--space-3); margin: 0; padding: var(--space-4); border: 0; border-radius: var(--radius-panel); background: var(--color-accent-wash);
+  & legend { display: flex; align-items: center; gap: 6px; float: inline-start; inline-size: 100%; margin-block-end: var(--space-1); color: var(--color-accent-text); font-size: var(--text-sm); font-weight: 600; }
+  @media (prefers-reduced-motion: no-preference) { animation: totp-in 240ms var(--ease-out) both; } }
+@keyframes totp-in { from { opacity: 0; transform: translateY(-6px); } }
+.error { margin: 0; color: var(--color-danger); font-size: var(--text-sm); }
+.note { margin: 0; color: var(--color-text-faint); font-size: var(--text-xs); text-align: center; }

@@ -1,0 +1,26 @@
+.panel { padding: var(--space-4) var(--space-5); border-radius: var(--radius-panel); background: var(--color-surface);
+  @media (max-width: 720px) { padding: var(--space-4); } }
+.error { margin: 0; color: var(--color-danger); font-size: var(--text-sm); }
+
+.list { display: grid; margin: 0; padding: 0; list-style: none;
+  & > li { padding: var(--space-3) 0; border-block-end: 1px solid var(--color-rule); }
+  & > li:first-child { padding-block-start: 0; }
+  & > li:last-child { padding-block-end: 0; border-block-end: 0; } }
+.row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-3); }
+.split { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.text { display: grid; min-inline-size: 0;
+  & strong { font-weight: 600; }
+  & small { color: var(--color-text-soft); font-size: var(--text-xs); }
+  & small.inline { color: var(--color-text-faint); font-weight: 400; } }
+.icon { display: grid; place-items: center; flex: none; inline-size: 36px; block-size: 36px; border-radius: 50%; background: var(--color-tint); color: var(--color-text-soft);
+  &[data-on] { background: var(--color-accent-wash); color: var(--color-accent-text); } }
+.setup { display: grid; gap: var(--space-3); justify-items: start; padding-block-start: var(--space-2);
+  & p { margin: 0; font-size: var(--text-sm); color: var(--color-text-soft); }
+  & > div { inline-size: min(240px, 100%); } }
+.secret { padding: var(--space-2) var(--space-3); border-radius: var(--radius-control); background: var(--color-sunken); font-size: var(--text-sm); letter-spacing: .08em; overflow-wrap: anywhere; user-select: all; }
+
+.recovery { display: grid; gap: var(--space-2); padding: var(--space-4); border-radius: var(--radius-control); background: var(--color-accent-wash);
+  & small { color: var(--color-text-soft); font-size: var(--text-xs); }
+  & ul { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
+  & code { display: block; padding: 4px 8px; border-radius: 6px; background: var(--color-surface); font-size: var(--text-sm); text-align: center; user-select: all; } }
+.actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }

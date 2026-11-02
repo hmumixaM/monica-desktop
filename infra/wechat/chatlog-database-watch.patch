@@ -1,0 +1,101 @@
+--- a/internal/chatlog/wechat/service.go
++++ b/internal/chatlog/wechat/service.go
+@@ -134,7 +134,14 @@
+ 	if s.conf.GetWalEnabled() {
+ 		pattern = `.*\.db(-wal|-shm)?$`
+ 	}
+-	dbGroup, err := filemonitor.NewFileGroup("wechat", s.conf.GetDataDir(), pattern, []string{"fts"})
++	// Only database storage needs monitoring. Walking the account root also
++	// scans years of attachments before the HTTP listener can start. Keep the
++	// configured root unchanged for relative decrypted output paths and keys.
++	monitorRoot := s.conf.GetDataDir()
++	if storage := filepath.Join(monitorRoot, "db_storage"); isDir(storage) {
++		monitorRoot = storage
++	}
++	dbGroup, err := filemonitor.NewFileGroup("wechat", monitorRoot, pattern, []string{"fts"})
+ 	if err != nil {
+ 		return err
+ 	}
+@@ -795,3 +802,8 @@
+ 	walHeaderSize      = 32
+ 	walFrameHeaderSize = 24
+ )
++
++func isDir(path string) bool {
++	info, err := os.Stat(path)
++	return err == nil && info.IsDir()
++}
+--- /dev/null
++++ b/internal/chatlog/wechat/service_watch_test.go
+@@ -0,0 +1,71 @@
++package wechat
++
++import (
++	"os"
++	"path/filepath"
++	"testing"
++
++	"github.com/sjzar/chatlog/internal/chatlog/conf"
++)
++
++func TestDatabaseWatcherExcludesAccountAttachments(t *testing.T) {
++	for _, nested := range []bool{true, false} {
++		name := "legacy"
++		if nested {
++			name = "account_root"
++		}
++		t.Run(name, func(t *testing.T) {
++			root := t.TempDir()
++			storage := root
++			if nested {
++				storage = filepath.Join(root, "db_storage")
++			}
++			db := filepath.Join(storage, "session", "session.db")
++			if err := os.MkdirAll(filepath.Dir(db), 0700); err != nil {
++				t.Fatal(err)
++			}
++			if err := os.WriteFile(db, nil, 0600); err != nil {
++				t.Fatal(err)
++			}
++			if nested {
++				attachment := filepath.Join(root, "msg", "old", "attachment.db")
++				if err := os.MkdirAll(filepath.Dir(attachment), 0700); err != nil {
++					t.Fatal(err)
++				}
++				if err := os.WriteFile(attachment, nil, 0600); err != nil {
++					t.Fatal(err)
++				}
++			}
++			cfg := &conf.ServerConfig{DataDir: root, WorkDir: filepath.Join(root, "work")}
++			service := NewService(cfg)
++			if err := service.StartAutoDecrypt(); err != nil {
++				t.Fatal(err)
++			}
++			t.Cleanup(func() { _ = service.StopAutoDecrypt() })
++			group, ok := service.fm.GetGroup("wechat")
++			if !ok {
++				t.Fatal("database monitor missing")
++			}
++			if group.RootDir != storage {
++				t.Fatalf("monitor root: %s, want %s", group.RootDir, storage)
++			}
++			files, err := group.List()
++			if err != nil {
++				t.Fatal(err)
++			}
++			if len(files) != 1 || files[0] != db {
++				t.Fatalf("unexpected monitored files: %v", files)
++			}
++			if service.conf.GetDataDir() != root {
++				t.Fatal("configured root changed; relative decrypt paths would change")
++			}
++			output, err := filepath.Rel(service.conf.GetDataDir(), db)
++			if err != nil {
++				t.Fatal(err)
++			}
++			if nested && output != filepath.Join("db_storage", "session", "session.db") {
++				t.Fatalf("incorrect decrypted relative path: %s", output)
++			}
++		})
++	}
++}

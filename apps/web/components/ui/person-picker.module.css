@@ -1,0 +1,6 @@
+.picker { display: grid; gap: var(--space-2);
+  & ul { display: grid; margin: 0; padding: 0; list-style: none; }
+  & button { display: flex; align-items: center; gap: var(--space-2); inline-size: 100%; min-block-size: 40px; padding: 4px var(--space-2);
+    border: 0; border-radius: var(--radius-control); background: none; color: var(--color-text); font-size: var(--text-sm); text-align: start; }
+  & button:is(:hover, :focus-visible) { background: var(--color-tint); }
+  & p { margin: 0; color: var(--color-text-faint); font-size: var(--text-sm); } }

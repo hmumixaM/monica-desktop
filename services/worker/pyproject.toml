@@ -1,0 +1,9 @@
+[project]
+name = "monica-next-worker"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+  "sqlalchemy>=2.0.36,<3",
+  "psycopg[binary]>=3.2,<4",
+  "pydantic-settings>=2.6,<3"
+]

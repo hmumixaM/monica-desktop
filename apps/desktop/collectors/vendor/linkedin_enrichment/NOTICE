@@ -1,0 +1,35 @@
+LinkedIn enrichment collector
+Copyright (C) 2026 Max Hu and contributors
+
+This program is licensed under the GNU General Public License version 3 only.
+See LICENSE.
+
+Upstream work
+-------------
+This project is a local adaptation layer around linkedin_scraper:
+
+  linkedin_scraper
+  Copyright (C) Joeyism and linkedin_scraper contributors
+  https://github.com/joeyism/linkedin_scraper
+
+The exact upstream source revision is
+b1cdc1c0e85bee8764d62565d229c682e5eb81bb. The upstream package is not copied
+into this repository; uv obtains that revision as source and builds it.
+
+Structured Voyager profile parsing uses:
+
+  linkedin-cli
+  Copyright (C) eracle and linkedin-cli contributors
+  https://github.com/darwincr/linkedin-cli
+
+The exact revision is 004e06a002ecf79c8ca1161c1e1d12487329bc90 and is
+distributed under the MIT License.
+
+Modifications/adaptations in this project include:
+* persistent Playwright Chromium user-data-directory lifecycle;
+* personal recent-activity collection using the upstream company post parser;
+* preview-only mutual-connection parsing and an ExtendedPerson model;
+* durable SQLite queue/archive, safety limits, CLI, and Monica export.
+
+These adaptation files are also distributed under GPL-3.0-only. No affiliation
+with or endorsement by LinkedIn is claimed.

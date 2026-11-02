@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "capabilities": {
+    "cdc": ["api/app/cdc.py", "api/app/cdc_codec.py", "api/app/projection_feed.py", "api/app/media_dependencies.py", "api/app/pipeline_status.py", "postgres/lib/postgresql/pgoutput.dylib", "migrations/076_cdc_and_media_dependencies.sql"],
+    "wechat": ["chatlog/chatlog", "api/app/wechat_contacts.py", "api/app/import_messages.py", "api/app/sync_archives.py", "wechat/prefetch-sns-images.py"],
+    "instagram_posts": ["collectors/collector.py", "collectors/vendor/instagram/archive_profile.py", "collectors/vendor/instagram/archive_followees.py", "collectors/vendor/instagram/followee_refresh.py", "api/app/instagram_posts.py", "api/app/reconcile_sources.py"],
+    "instagram_stories": ["collectors/vendor/instagram/archive_stories.py", "collectors/vendor/instagram/story_schedule.py", "api/app/sync_instagram_stories.py"],
+    "instagram_highlights": ["collectors/vendor/instagram/archive_highlights.py", "api/app/sync_instagram_stories.py"],
+    "linkedin": ["collectors/run_linkedin.py", "collectors/vendor/linkedin_enrichment/cli.py", "collectors/vendor/linkedin_enrichment/collector.py", "collectors/vendor/linkedin_enrichment/activity_posts.py", "api/app/linkedin_import.py", "api/app/sync_linkedin.py", "api/app/archive_linkedin.py"],
+    "faces": ["faces/monica_faces/run.py", "models/insightface/models/buffalo_l/det_10g.onnx", "models/insightface/models/buffalo_l/w600k_r50.onnx"],
+    "local_services": ["python/bin/python3", "node/bin/node", "postgres/bin/postgres", "caddy/caddy", "web/apps/web/server.js", "worker.py", "infra/snapshot_publish.py"]
+  },
+  "packages": {"instaloader": "4.15.3", "playwright": "1.62.0"},
+  "vcs_commits": {"linkedin-cli": "004e06a002ecf79c8ca1161c1e1d12487329bc90", "linkedin-scraper": "b1cdc1c0e85bee8764d62565d229c682e5eb81bb"}
+}

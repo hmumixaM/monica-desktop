@@ -1,0 +1,19 @@
+{$CRM_SCHEME:http}://{$CRM_HOST:localhost} {
+  # NAS deployments use Caddy's local CA for the private DNS name.  Install
+  # the generated root certificate on trusted devices, or replace this with a
+  # certificate issued by the NAS reverse-proxy/ACME configuration.
+  tls internal
+  encode gzip
+
+  handle /api/* {
+    reverse_proxy api:8000
+  }
+
+  handle /health {
+    reverse_proxy api:8000
+  }
+
+  handle {
+    reverse_proxy web:3000
+  }
+}

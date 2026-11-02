@@ -1,0 +1,27 @@
+.ribbon {
+  position: relative; margin: 0; min-inline-size: 0;
+  & svg { display: block; overflow: visible; cursor: crosshair; touch-action: pan-y; border-radius: 4px; }
+  & svg:focus-visible { outline: var(--focus-ring); outline-offset: 4px; }
+}
+.sent { fill: var(--chart-sent); }
+.received { fill: var(--chart-received); }
+.baseline { stroke: var(--color-surface); stroke-width: 1; }
+.peak { fill: var(--color-accent-wash); }
+.call { stroke: var(--color-accent-text); stroke-width: 1.5; stroke-linecap: round; }
+.interaction { fill: var(--color-accent); }
+.marker { fill: var(--color-surface); stroke: var(--color-text); stroke-width: 1.5; }
+.marker[data-kind="event"] { fill: var(--color-accent); stroke: var(--color-surface); }
+.year { fill: var(--color-text-faint); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.crosshair { stroke: var(--color-text); stroke-width: 1; stroke-dasharray: 2 3; pointer-events: none; }
+.cover { fill: var(--color-surface); opacity: 0; pointer-events: none; }
+
+.tip {
+  position: absolute; inset-block-end: calc(100% + 6px); z-index: 2; translate: -50% 0;
+  display: grid; gap: 1px; min-inline-size: 120px; padding: 7px 10px;
+  border: 1px solid var(--color-rule); border-radius: var(--radius-control); background: var(--color-surface); box-shadow: var(--shadow-float);
+  font-size: var(--text-xs); color: var(--color-text-soft); pointer-events: none; white-space: nowrap;
+  & strong { color: var(--color-text); font-size: var(--text-sm); }
+  & i { display: inline-block; inline-size: 8px; block-size: 8px; margin-inline-end: 6px; border-radius: 2px; }
+  & i[data-series="sent"] { background: var(--chart-sent); }
+  & i[data-series="received"] { background: var(--chart-received); }
+}

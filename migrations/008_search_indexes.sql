@@ -1,0 +1,9 @@
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE INDEX IF NOT EXISTS profiles_display_name_trgm_idx
+  ON profiles USING gin (display_name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS profiles_summary_trgm_idx
+  ON profiles USING gin (summary gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS tags_name_trgm_idx
+  ON tags USING gin (name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS content_objects_payload_caption_trgm_idx
+  ON content_objects USING gin ((payload_json->>'caption') gin_trgm_ops);

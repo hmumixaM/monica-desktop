@@ -1,0 +1,42 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Monica",
+  "version": "0.1.0",
+  "identifier": "org.monica.desktop",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://127.0.0.1:1420",
+    "beforeBuildCommand": "npm run verify:runtime && npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "settings",
+        "title": "Monica 设置",
+        "width": 820,
+        "height": 760,
+        "minWidth": 590,
+        "minHeight": 520,
+        "visible": false,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src ipc: http://ipc.localhost; img-src 'self' data:; object-src 'none'; frame-src 'none'; base-uri 'self'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app", "dmg"],
+    "resources": { "../resources/runtime/": "runtime/" },
+    "category": "Productivity",
+    "icon": ["icons/icon.png", "icons/icon.icns"],
+    "shortDescription": "Your relationships, on your Mac",
+    "macOS": {
+      "minimumSystemVersion": "26.0",
+      "signingIdentity": "-",
+      "entitlements": "Entitlements.plist"
+    }
+  }
+}

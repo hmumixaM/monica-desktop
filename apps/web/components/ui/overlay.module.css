@@ -1,0 +1,79 @@
+/* Native <dialog> panels: centred dialogs and bottom sheets. */
+.dialog {
+  inline-size: min(var(--dialog-width, 560px), calc(100vw - 24px)); max-inline-size: none; max-block-size: min(88dvh, 920px);
+  padding: 0; border: 0; border-radius: var(--radius-media); background: var(--color-surface); color: var(--color-text);
+  box-shadow: var(--shadow-float); overflow: hidden; overscroll-behavior: contain;
+  &::backdrop { background: var(--color-overlay); }
+  &[open] { display: flex; flex-direction: column; animation: dialog-in var(--duration-base) var(--ease-out); }
+  &[open]::backdrop { animation: fade-in var(--duration-base) ease-out; }
+}
+.dialog[data-size="wide"] { --dialog-width: 920px; }
+.dialog[data-size="full"] { --dialog-width: 1400px; max-block-size: 96dvh; }
+.dialogHeader {
+  display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-4) var(--space-4) var(--space-3) var(--space-5);
+  & > div { flex: 1; min-inline-size: 0; display: grid; gap: 2px; }
+  & h2 { font: 600 var(--text-lg) / 1.3 var(--font-display); }
+  & p { color: var(--color-text-soft); font-size: var(--text-sm); }
+}
+.dialogBody { flex: 1; min-block-size: 0; overflow: auto; padding: 0 var(--space-5) var(--space-5); overscroll-behavior: contain; }
+
+/* Sheets rise from the bottom on narrow screens and can be dragged down to dismiss. */
+.sheet {
+  inline-size: 100%; max-inline-size: none; max-block-size: min(86dvh, 760px); margin: auto 0 0; padding: 0;
+  border: 0; border-radius: 18px 18px 0 0; background: var(--color-surface); color: var(--color-text);
+  box-shadow: var(--shadow-float); overflow: hidden; overscroll-behavior: contain;
+  &::backdrop { background: var(--color-overlay); }
+  &[open] { display: flex; flex-direction: column; animation: sheet-in 280ms var(--ease-out); }
+  &[open]::backdrop { animation: fade-in var(--duration-base) ease-out; }
+  &[data-dragging] { transition: none; }
+}
+.grabber { display: grid; place-items: center; flex: none; block-size: 24px; touch-action: none; cursor: grab;
+  &::before { content: ""; inline-size: 40px; block-size: 4px; border-radius: 2px; background: var(--color-rule-strong); } }
+.sheetBody { flex: 1; min-block-size: 0; overflow: auto; padding: 0 var(--space-4) calc(var(--space-5) + env(safe-area-inset-bottom)); }
+@media (min-width: 721px) {
+  .sheet { inline-size: min(560px, calc(100vw - 24px)); margin: auto; border-radius: var(--radius-media);
+    &[open] { animation: dialog-in var(--duration-base) var(--ease-out); } }
+  .grabber { display: none; }
+  .sheetBody { padding-block-start: var(--space-4); }
+}
+
+/* Radix dropdown menu */
+.menu {
+  z-index: 60; min-inline-size: 180px; padding: 4px; border: 1px solid var(--color-rule); border-radius: var(--radius-panel);
+  background: var(--color-surface); box-shadow: var(--shadow-float); animation: dialog-in var(--duration-fast) var(--ease-out);
+  transform-origin: var(--radix-dropdown-menu-content-transform-origin);
+}
+.menuItem {
+  display: flex; align-items: center; gap: 10px; min-block-size: 36px; padding: 0 10px; border-radius: 6px;
+  color: var(--color-text); font-size: var(--text-sm); outline: 0; cursor: pointer; user-select: none;
+  &[data-highlighted] { background: var(--color-tint); }
+  &[data-disabled] { opacity: .45; pointer-events: none; }
+  & svg { color: var(--color-text-faint); }
+}
+.menuSeparator { block-size: 1px; margin: 4px 6px; background: var(--color-rule); }
+
+/* Toasts with an undo action */
+.toasts { position: fixed; inset-inline: 0; inset-block-end: calc(var(--space-5) + env(safe-area-inset-bottom)); z-index: 80;
+  display: grid; justify-items: center; gap: var(--space-2); pointer-events: none; padding-inline: var(--space-4); }
+.toast {
+  display: flex; align-items: center; gap: var(--space-3); max-inline-size: min(520px, 100%); padding: 10px 10px 10px 16px;
+  border-radius: var(--radius-panel); background: var(--color-primary); color: var(--color-on-primary); box-shadow: var(--shadow-float);
+  font-size: var(--text-sm); pointer-events: auto; animation: toast-in var(--duration-base) var(--ease-out);
+  & span { flex: 1; min-inline-size: 0; }
+  & button { flex: none; min-block-size: 30px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent;
+    color: var(--color-accent); font-weight: 650; }
+  & button:hover { background: color-mix(in oklab, var(--color-on-primary) 12%, transparent); }
+  &[data-leaving] { animation: toast-out var(--duration-fast) ease-in forwards; }
+}
+@media (max-width: 720px) { .toasts { inset-block-end: calc(var(--shell-tabbar) + var(--space-3) + env(safe-area-inset-bottom)); } }
+
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes dialog-in { from { opacity: 0; transform: scale(.97); } }
+@keyframes sheet-in { from { transform: translateY(100%); } }
+@keyframes toast-in { from { opacity: 0; transform: translateY(12px); } }
+@keyframes toast-out { to { opacity: 0; transform: translateY(8px); } }
+
+@media (max-width: 720px) {
+  .dialog { max-block-size: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px); }
+  .menuItem { min-block-size: 44px; }
+}

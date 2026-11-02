@@ -1,0 +1,217 @@
+/* Monica Next design tokens: an address book marked with one gamboge highlighter.
+   The interface is ink on paper; gamboge marks what needs attention now; the three
+   source colours only ever describe where data came from. */
+@layer reset, base, components;
+
+:root {
+  color-scheme: light;
+
+  /* Tier 1: palette */
+  --paper: #f3f4f6;
+  --surface: #ffffff;
+  --ink: #1b2230;
+  --ink-2: #545d6b;
+  --ink-3: #8b93a1;
+  --gamboge: #f5b83d;
+  --gamboge-ink: #8a5a00;
+  --gamboge-wash: #fdf0d2;
+  --danger: #c43d2b;
+
+  --wechat: #07c160;
+  --wechat-ink: #0a8f4e;
+  --instagram: #c13584;
+  --linkedin: #0a66c2;
+
+  /* Tier 2: semantic */
+  --color-canvas: var(--paper);
+  --color-surface: var(--surface);
+  --color-sunken: #e9ebef;
+  --color-text: var(--ink);
+  --color-text-soft: var(--ink-2);
+  --color-text-faint: var(--ink-3);
+  --color-rule: color-mix(in oklab, var(--ink) 11%, transparent);
+  --color-rule-strong: color-mix(in oklab, var(--ink) 22%, transparent);
+  --color-tint: color-mix(in oklab, var(--ink) 5%, var(--surface));
+  --color-tint-strong: color-mix(in oklab, var(--ink) 9%, var(--surface));
+  --color-accent: var(--gamboge);
+  --color-accent-text: var(--gamboge-ink);
+  --color-accent-wash: var(--gamboge-wash);
+  --color-on-accent: #1b2230;
+  --color-primary: var(--ink);
+  --color-on-primary: #ffffff;
+  --color-danger: var(--danger);
+  --color-overlay: color-mix(in oklab, #0b0f17 46%, transparent);
+  --shadow-float: 0 12px 36px color-mix(in oklab, #0b0f17 16%, transparent), 0 1px 3px color-mix(in oklab, #0b0f17 8%, transparent);
+
+  --source-wechat: var(--wechat);
+  --source-wechat-text: var(--wechat-ink);
+  --source-instagram: var(--instagram);
+  --source-instagram-text: var(--instagram);
+  --source-linkedin: var(--linkedin);
+  --source-linkedin-text: var(--linkedin);
+  --source-monica: var(--ink-2);
+  --source-monica-text: var(--ink-2);
+  --chart-sent: var(--ink);
+  --chart-received: color-mix(in oklab, var(--ink) 32%, var(--surface));
+
+  /* Relationship graphs: who reaches out (data colours, never UI state) */
+  --graph-reciprocal: #2f9e6e;
+  --graph-outward: #d9822b;
+  --graph-inward: #7c5cc4;
+  --graph-neutral: #4a8fa8;
+  --graph-group: #5b7fb8;
+  /* Communities in the relationship graph and orbit, read by canvas code: plain hex only */
+  --graph-communities: #3d6fb6, #2f9e6e, #d9822b, #7c5cc4, #c2477a, #2a8a9a, #a37a1f, #5f6c7b, #4f8a3a, #b5562d;
+
+  /* Map basemap when the vector tiles are unreachable */
+  --map-water: #dfe5ec;
+  --map-land: #f7f7f5;
+  --map-border: #c4c9d1;
+
+  --font-body: "PingFang SC", "HarmonyOS Sans SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+  --font-display: var(--font-serif-sc, "Songti SC"), "Noto Serif SC", "Source Han Serif SC", serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Type scale: 12 / 13 / 15 / 18 / 23 / 29 / 36 */
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-md: 15px;
+  --text-lg: 18px;
+  --text-xl: 23px;
+  --text-2xl: 29px;
+  --text-3xl: 36px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  /* Radius follows hierarchy: media > panels > controls; chips are pills */
+  --radius-media: 14px;
+  --radius-panel: 10px;
+  --radius-control: 8px;
+  --radius-chip: 999px;
+
+  --ease-out: cubic-bezier(.2, .7, .2, 1);
+  --duration-fast: 120ms;
+  --duration-base: 220ms;
+  --duration-slow: 600ms;
+
+  --focus-ring: 2px solid var(--color-accent-text);
+  --shell-topbar: 56px;
+  --shell-tabbar: 64px;
+}
+
+/* Dark: an explicit choice, or the system preference unless light was chosen. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #171c26;
+  --surface: #1f2531;
+  --ink: #e6e8ec;
+  --ink-2: #aab1bd;
+  --ink-3: #7c8492;
+  --gamboge: #e8a92e;
+  --gamboge-ink: #f2c15f;
+  --gamboge-wash: #3a2f19;
+  --danger: #ef6a55;
+  --wechat-ink: #34d17f;
+  --instagram: #e05aa6;
+  --linkedin: #4c9ae8;
+  --color-sunken: #151a23;
+  --color-on-accent: #171c26;
+  --color-primary: #e6e8ec;
+  --color-on-primary: #171c26;
+  --color-overlay: color-mix(in oklab, #05070b 64%, transparent);
+  --shadow-float: 0 12px 36px rgb(0 0 0 / .45), 0 1px 3px rgb(0 0 0 / .3);
+  --graph-reciprocal: #4cc28d;
+  --graph-outward: #eb9a4a;
+  --graph-inward: #a28ae6;
+  --graph-neutral: #6fb2c9;
+  --graph-group: #7f9fd6;
+  --graph-communities: #6f9be0, #4cc28d, #eb9a4a, #a28ae6, #e077a3, #55b8c7, #d1a64a, #9aa4b1, #7cb866, #e0815a;
+  --map-water: #121722;
+  --map-land: #262d3a;
+  --map-border: #3b4453;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --paper: #171c26;
+    --surface: #1f2531;
+    --ink: #e6e8ec;
+    --ink-2: #aab1bd;
+    --ink-3: #7c8492;
+    --gamboge: #e8a92e;
+    --gamboge-ink: #f2c15f;
+    --gamboge-wash: #3a2f19;
+    --danger: #ef6a55;
+    --wechat-ink: #34d17f;
+    --instagram: #e05aa6;
+    --linkedin: #4c9ae8;
+    --color-sunken: #151a23;
+    --color-on-accent: #171c26;
+    --color-primary: #e6e8ec;
+    --color-on-primary: #171c26;
+    --color-overlay: color-mix(in oklab, #05070b 64%, transparent);
+    --shadow-float: 0 12px 36px rgb(0 0 0 / .45), 0 1px 3px rgb(0 0 0 / .3);
+    --graph-reciprocal: #4cc28d;
+    --graph-outward: #eb9a4a;
+    --graph-inward: #a28ae6;
+    --graph-neutral: #6fb2c9;
+    --graph-group: #7f9fd6;
+    --graph-communities: #6f9be0, #4cc28d, #eb9a4a, #a28ae6, #e077a3, #55b8c7, #d1a64a, #9aa4b1, #7cb866, #e0815a;
+    --map-water: #121722;
+    --map-land: #262d3a;
+    --map-border: #3b4453;
+  }
+}
+
+@media (forced-colors: active) {
+  :root { --color-rule: CanvasText; --focus-ring: 2px solid Highlight; }
+}
+
+@layer reset {
+  :where(*, *::before, *::after) { box-sizing: border-box; }
+  :where(body, h1, h2, h3, h4, p, figure, dl, dd, blockquote) { margin: 0; }
+  :where(ul[role="list"], ol[role="list"]) { margin: 0; padding: 0; list-style: none; }
+  :where(img, video, svg, canvas) { display: block; max-inline-size: 100%; }
+  :where(button, input, select, textarea) { font: inherit; color: inherit; letter-spacing: inherit; }
+  :where(button) { cursor: pointer; }
+  :where(button:disabled) { cursor: not-allowed; }
+  :where(a) { color: inherit; text-decoration: none; }
+  :where(table) { border-collapse: collapse; }
+  :where(dialog) { color: inherit; }
+}
+
+@layer base {
+  .sr-only { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  html { background: var(--color-canvas); -webkit-text-size-adjust: 100%; }
+  body {
+    min-block-size: 100dvh;
+    color: var(--color-text);
+    background: var(--color-canvas);
+    font: var(--text-md) / 1.6 var(--font-body);
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+  }
+  :where(h1, h2, h3) { text-wrap: balance; line-height: 1.25; }
+  :where(p) { text-wrap: pretty; }
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+  :where(button, a, input, select, textarea) { touch-action: manipulation; }
+  :where(code, pre) { font-family: var(--font-mono); font-size: .92em; }
+  :where(summary) { cursor: pointer; }
+  ::selection { background: var(--color-accent-wash); }
+  [role="alert"] { color: var(--color-danger); }
+
+  /* Shared view transition: the avatar flies into the profile hero, tab panels cross-fade. */
+  ::view-transition-old(root), ::view-transition-new(root) { animation-duration: var(--duration-base); }
+  ::view-transition-group(profile-avatar) { animation-duration: 380ms; animation-timing-function: var(--ease-out); }
+
+  @media (prefers-reduced-motion: reduce) {
+    :where(*, *::before, *::after) { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+    ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+  }
+}

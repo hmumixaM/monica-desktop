@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "validated_at": "2026-10-26T06:31:17Z",
+  "platform": "darwin/arm64",
+  "wechat_version": "4.1.15",
+  "go_version": "go1.25.5",
+  "source_commit": "ebab1f53e2fdec3a600ceef0e0e5587615407330",
+  "binary_sha256": "ddf5383e43ad05f31b30a511d9b1b2c70f427d4f1306a61c114259b7340a6ae8",
+  "source_validation": {
+    "existing_key_format": "SQLCipher master key",
+    "new_key_extraction": false,
+    "source_mutations": false,
+    "wechat_restarted": false,
+    "api_ready": true,
+    "contacts_returned": 11582,
+    "sessions_sampled": 20,
+    "history_sample_returned": 1,
+    "snapshots_exported": 13,
+    "snapshot_failures": 0,
+    "independent_python_readonly_checks": 13,
+    "message_snapshot_rows": 2260358,
+    "watcher": "active",
+    "sigterm_exit_code": 0,
+    "service_stopped": true,
+    "secret_values_in_logs": false,
+    "secret_values_in_patch_metadata": false
+  },
+  "tests": {
+    "targeted_go_packages": "passed",
+    "desktop_wcdb_race_tests": "passed",
+    "pinned_source_patch_rebuild": "passed",
+    "sqlite_wal_update_and_watcher_shutdown_fixture": "passed",
+    "committed_wal_and_uncommitted_tail_fixtures": "passed",
+    "master_and_raw_key_fixtures": "passed",
+    "source_path_and_loopback_restrictions": "passed"
+  },
+  "limits": [
+    "No natural incoming WeChat message was deliberately generated; watcher update behavior was tested with an isolated SQLite WAL fixture.",
+    "This validates the native Chatlog component, not every Monica desktop application flow."
+  ],
+  "media_validation": {
+    "real_proxy_response": true,
+    "separate_importer_cache_created": true,
+    "decrypted_bytes": 589364,
+    "matches_native_proxy_cache": true,
+    "import_queue_reference_valid": true,
+    "prefetch_policy_tests_passed": 15,
+    "truncated_response_preserves_previous_cache": true
+  }
+}

@@ -1,0 +1,1706 @@
+diff --git a/cmd/chatlog/cmd_serve.go b/cmd/chatlog/cmd_serve.go
+new file mode 100644
+index 0000000..0128fc5
+--- /dev/null
++++ b/cmd/chatlog/cmd_serve.go
+@@ -0,0 +1,33 @@
++package chatlog
++
++import (
++	"context"
++	"os"
++	"os/signal"
++	"syscall"
++	"time"
++
++	"github.com/rs/zerolog"
++	"github.com/rs/zerolog/log"
++	"github.com/sjzar/chatlog/internal/chatlog"
++	"github.com/spf13/cobra"
++)
++
++func newServeCommand() *cobra.Command {
++	var configDir string
++	cmd := &cobra.Command{Use: "serve", Short: "Run the loopback data API and snapshots for Monica Desktop", Args: cobra.NoArgs,
++		PersistentPreRun: func(cmd *cobra.Command, args []string) {
++			zerolog.SetGlobalLevel(zerolog.InfoLevel)
++			log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339, NoColor: true})
++		},
++		RunE: func(cmd *cobra.Command, args []string) error {
++			ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
++			defer stop()
++			return chatlog.DesktopServe(ctx, configDir)
++		},
++	}
++	cmd.Flags().StringVar(&configDir, "config-dir", "", "Private directory containing chatlog-server.json")
++	cmd.MarkFlagRequired("config-dir")
++	return cmd
++}
++func init() { rootCmd.AddCommand(newServeCommand()) }
+diff --git a/cmd/chatlog/root.go b/cmd/chatlog/root.go
+index e1f8723..39b3d36 100644
+--- a/cmd/chatlog/root.go
++++ b/cmd/chatlog/root.go
+@@ -22,6 +22,7 @@ func init() {
+ func Execute() {
+ 	if err := rootCmd.Execute(); err != nil {
+ 		log.Err(err).Msg("command execution failed")
++		os.Exit(1)
+ 	}
+ }
+ 
+diff --git a/internal/chatlog/conf/server.go b/internal/chatlog/conf/server.go
+index 0024dfb..e1393f8 100644
+--- a/internal/chatlog/conf/server.go
++++ b/internal/chatlog/conf/server.go
+@@ -7,6 +7,7 @@ const (
+ )
+ 
+ type ServerConfig struct {
++	DesktopMode         bool            `mapstructure:"desktop_mode"`
+ 	Type                string          `mapstructure:"type"`
+ 	Platform            string          `mapstructure:"platform"`
+ 	Version             int             `mapstructure:"version"`
+@@ -87,6 +88,9 @@ func (c *ServerConfig) GetSaveDecryptedMedia() bool {
+ }
+ 
+ func (c *ServerConfig) GetSemanticConfig() *SemanticConfig {
++	if c.DesktopMode {
++		return &SemanticConfig{}
++	}
+ 	if c.Semantic == nil {
+ 		c.Semantic = &SemanticConfig{
+ 			OllamaBaseURL:         DefaultOllamaBaseURL,
+@@ -125,6 +129,9 @@ func (c *ServerConfig) GetSemanticConfig() *SemanticConfig {
+ }
+ 
+ func (c *ServerConfig) SetSemanticConfig(cfg SemanticConfig) {
++	if c.DesktopMode {
++		return
++	}
+ 	norm := NormalizeSemanticConfig(cfg)
+ 	norm.Enabled = true
+ 	norm.EnableQA = true
+@@ -179,3 +186,5 @@ func (c *ServerConfig) SetHookForwardChatRooms(raw string) {
+ 	cfg := c.GetMessageHook()
+ 	cfg.ForwardChatRooms = strings.TrimSpace(raw)
+ }
++
++func (c *ServerConfig) IsDesktopMode() bool { return c.DesktopMode }
+diff --git a/internal/chatlog/database/service.go b/internal/chatlog/database/service.go
+index 1ea4b8d..c0033ed 100644
+--- a/internal/chatlog/database/service.go
++++ b/internal/chatlog/database/service.go
+@@ -336,6 +336,9 @@ func (s *Service) SearchAll(keyword string, limit int, deep bool) ([]map[string]
+ }
+ 
+ func (s *Service) initMessageHook() error {
++	if mode, ok := s.conf.(interface{ IsDesktopMode() bool }); ok && mode.IsDesktopMode() {
++		return nil
++	}
+ 	if s.db == nil {
+ 		return nil
+ 	}
+diff --git a/internal/chatlog/desktop.go b/internal/chatlog/desktop.go
+new file mode 100644
+index 0000000..fe78f05
+--- /dev/null
++++ b/internal/chatlog/desktop.go
+@@ -0,0 +1,368 @@
++package chatlog
++
++import (
++	"context"
++	"encoding/hex"
++	"encoding/json"
++	"errors"
++	"fmt"
++	"net"
++	stdhttp "net/http"
++	"os"
++	"path/filepath"
++	"sort"
++	"strings"
++	"sync"
++	"syscall"
++	"time"
++
++	"github.com/fsnotify/fsnotify"
++	"github.com/mitchellh/mapstructure"
++	"github.com/rs/zerolog/log"
++	"github.com/sjzar/chatlog/internal/chatlog/conf"
++	"github.com/sjzar/chatlog/internal/chatlog/database"
++	chathttp "github.com/sjzar/chatlog/internal/chatlog/http"
++	"github.com/sjzar/chatlog/internal/wechatdb/wcdbapi"
++	"github.com/sjzar/chatlog/pkg/filemonitor"
++	"github.com/sjzar/chatlog/pkg/util/dat2img"
++)
++
++// DesktopServe runs only the local data API and an atomic snapshot exporter.
++// It never initializes TUI state, key extraction, hooks or the separate AI engine.
++func DesktopServe(ctx context.Context, configDir string) error {
++	cfg, err := loadDesktopConfig(configDir)
++	if err != nil {
++		return err
++	}
++	lock, err := os.OpenFile(filepath.Join(configDir, ".serve.lock"), os.O_CREATE|os.O_RDWR, 0o600)
++	if err != nil {
++		return err
++	}
++	defer lock.Close()
++	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
++		return fmt.Errorf("desktop Chatlog is already running for this configuration")
++	}
++	defer syscall.Flock(int(lock.Fd()), syscall.LOCK_UN)
++	if os.Getenv("CHATLOG_WCDB_CACHE_DIR") == "" {
++		os.Setenv("CHATLOG_WCDB_CACHE_DIR", filepath.Join(cfg.WorkDir, "wcdb-cache"))
++	}
++	cache, err := canonicalDestination(os.Getenv("CHATLOG_WCDB_CACHE_DIR"))
++	if err != nil || !filepath.IsAbs(cache) || pathsOverlap(cfg.DataDir, cache) {
++		return fmt.Errorf("CHATLOG_WCDB_CACHE_DIR must be absolute and separate from the WeChat source")
++	}
++	client, err := wcdbapi.NewClient(cfg.DataDir, cfg.DataKey)
++	if err != nil {
++		return err
++	}
++	// The upstream database service logs some contact-loader errors and returns
++	// an empty list, so validate the actual table before declaring readiness.
++	if _, err := client.Query("contact", "", "SELECT username FROM contact LIMIT 1"); err != nil {
++		return fmt.Errorf("WeChat contact database is not readable: %w", err)
++	}
++	snapshots := newDesktopSnapshots(client, cfg.WorkDir)
++	db := database.NewService(cfg)
++	if err := db.Start(); err != nil {
++		return fmt.Errorf("open WeChat source: %w", err)
++	}
++	defer db.Stop()
++	// Opening the database object alone doesn't validate its encryption key.
++	if _, err := db.GetContacts("", 1, 0); err != nil {
++		return fmt.Errorf("WeChat contact database is not readable: %w", err)
++	}
++	if _, err := db.GetSessions("", 1, 0); err != nil {
++		return fmt.Errorf("WeChat session database is not readable: %w", err)
++	}
++	dat2img.SetAesKey(cfg.ImgKey)
++	service := chathttp.NewService(cfg, db)
++	defer service.Stop()
++	listener, err := net.Listen("tcp", cfg.HTTPAddr)
++	if err != nil {
++		return err
++	}
++	defer listener.Close()
++	mux := stdhttp.NewServeMux()
++	mux.HandleFunc("/api/v1/ready", func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
++		w.Header().Set("Content-Type", "application/json")
++		json.NewEncoder(w).Encode(map[string]any{"ready": true, "mode": "desktop"})
++	})
++	mux.HandleFunc("/api/v1/desktop/status", func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
++		w.Header().Set("Content-Type", "application/json")
++		json.NewEncoder(w).Encode(snapshots.status())
++	})
++	mux.Handle("/", desktopAPIHandler(service.Handler()))
++	server := &stdhttp.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second}
++	serverDone := make(chan error, 1)
++	go func() { serverDone <- server.Serve(listener) }()
++	defer func() {
++		shutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
++		defer cancel()
++		server.Shutdown(shutdown)
++	}()
++	watchCtx, cancelWatch := context.WithCancel(ctx)
++	defer cancelWatch()
++	watchDone := make(chan struct{})
++	go func() {
++		defer close(watchDone)
++		snapshots.run(watchCtx, cfg.AutoDecrypt, time.Duration(cfg.AutoDecryptDebounce)*time.Millisecond)
++	}()
++	defer func() { cancelWatch(); <-watchDone }()
++	log.Info().Str("address", listener.Addr().String()).Msg("desktop Chatlog API ready")
++	select {
++	case <-ctx.Done():
++		return nil
++	case err := <-serverDone:
++		if errors.Is(err, stdhttp.ErrServerClosed) {
++			return nil
++		}
++		return err
++	}
++}
++
++// Desktop consumers need the data API, not the upstream administration routes.
++func desktopAPIHandler(next stdhttp.Handler) stdhttp.Handler {
++	allowed := map[string]bool{}
++	for _, route := range []string{"/health", "/api/v1/ping", "/api/v1/sessions", "/api/v1/history", "/api/v1/search", "/api/v1/unread", "/api/v1/members", "/api/v1/new_messages", "/api/v1/stats", "/api/v1/favorites", "/api/v1/sns_notifications", "/api/v1/sns_feed", "/api/v1/sns_search", "/api/v1/sns/media/proxy", "/api/v1/contacts", "/api/v1/chatrooms", "/api/v1/db", "/api/v1/db/search", "/api/v1/db/tables", "/api/v1/db/data", "/api/v1/db/query"} {
++		allowed[route] = true
++	}
++	return stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
++		if r.Method != stdhttp.MethodGet && r.Method != stdhttp.MethodHead {
++			w.WriteHeader(stdhttp.StatusMethodNotAllowed)
++			return
++		}
++		ok := allowed[r.URL.Path]
++		for _, prefix := range []string{"/image/", "/video/", "/file/", "/voice/", "/data/"} {
++			ok = ok || strings.HasPrefix(r.URL.Path, prefix)
++		}
++		if !ok {
++			stdhttp.NotFound(w, r)
++			return
++		}
++		next.ServeHTTP(w, r)
++	})
++}
++
++func loadDesktopConfig(configDir string) (*conf.ServerConfig, error) {
++	if !filepath.IsAbs(configDir) {
++		return nil, fmt.Errorf("config-dir must be an absolute path")
++	}
++	raw, err := os.ReadFile(filepath.Join(configDir, "chatlog-server.json"))
++	if err != nil {
++		return nil, err
++	}
++	var values map[string]any
++	if err = json.Unmarshal(raw, &values); err != nil {
++		return nil, fmt.Errorf("invalid desktop Chatlog configuration")
++	}
++	cfg := &conf.ServerConfig{Platform: "darwin", Version: 4, HTTPAddr: "127.0.0.1:5030", AutoDecrypt: true, WalEnabled: true, AutoDecryptDebounce: 1000}
++	if err = mapstructure.Decode(values, cfg); err != nil {
++		return nil, fmt.Errorf("invalid desktop Chatlog field types")
++	}
++	if cfg.Platform != "darwin" || cfg.Version != 4 {
++		return nil, fmt.Errorf("desktop mode requires platform darwin and WeChat version 4")
++	}
++	host, port, err := net.SplitHostPort(cfg.HTTPAddr)
++	if err != nil || port == "" {
++		return nil, fmt.Errorf("http_addr must be a loopback address with a port")
++	}
++	ip := net.ParseIP(host)
++	if ip == nil || !ip.IsLoopback() {
++		return nil, fmt.Errorf("desktop Chatlog must bind a numeric loopback address")
++	}
++	if !filepath.IsAbs(cfg.DataDir) || !filepath.IsAbs(cfg.WorkDir) {
++		return nil, fmt.Errorf("data_dir and work_dir must be absolute")
++	}
++	source, err := filepath.EvalSymlinks(cfg.DataDir)
++	if err != nil {
++		return nil, fmt.Errorf("WeChat data directory is unavailable")
++	}
++	cfg.DataDir = source
++	// Resolve the destination before creating it, including any existing symlinked parent.
++	work, err := canonicalDestination(cfg.WorkDir)
++	if err != nil {
++		return nil, err
++	}
++	cfg.WorkDir = work
++	if pathsOverlap(cfg.DataDir, cfg.WorkDir) {
++		return nil, fmt.Errorf("work_dir must be separate from the WeChat source directory")
++	}
++	key, err := hex.DecodeString(cfg.DataKey)
++	if err != nil || len(key) != 32 {
++		return nil, fmt.Errorf("a valid existing 64-character data_key is required")
++	}
++	cfg.DesktopMode = true
++	cfg.SaveDecryptedMedia = false
++	cfg.Semantic = nil
++	cfg.MessageHook = nil
++	if cfg.AutoDecryptDebounce < 100 {
++		cfg.AutoDecryptDebounce = 1000
++	}
++	if err = os.MkdirAll(cfg.WorkDir, 0o700); err != nil {
++		return nil, err
++	}
++	return cfg, nil
++}
++
++func canonicalDestination(path string) (string, error) {
++	path = filepath.Clean(path)
++	if resolved, err := filepath.EvalSymlinks(path); err == nil {
++		return resolved, nil
++	}
++	parent := filepath.Dir(path)
++	if parent == path {
++		return "", fmt.Errorf("invalid work directory")
++	}
++	resolved, err := canonicalDestination(parent)
++	if err != nil {
++		return "", err
++	}
++	return filepath.Join(resolved, filepath.Base(path)), nil
++}
++func pathsOverlap(a, b string) bool {
++	inside := func(root, path string) bool {
++		rel, err := filepath.Rel(root, path)
++		return err == nil && (rel == "." || !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && rel != "..")
++	}
++	return inside(a, b) || inside(b, a)
++}
++
++type desktopSnapshotStatus struct {
++	Ready    bool   `json:"snapshots_ready"`
++	Files    int    `json:"snapshot_files"`
++	Updated  int    `json:"updated_last_pass"`
++	Failures int    `json:"failed_files"`
++	LastPass string `json:"last_pass_at,omitempty"`
++	Watcher  string `json:"watcher"`
++}
++type desktopSnapshots struct {
++	client *wcdbapi.Client
++	work   string
++	mu     sync.RWMutex
++	state  desktopSnapshotStatus
++	stamps map[string]string
++}
++
++func newDesktopSnapshots(c *wcdbapi.Client, work string) *desktopSnapshots {
++	return &desktopSnapshots{client: c, work: work, stamps: map[string]string{}, state: desktopSnapshotStatus{Watcher: "starting"}}
++}
++func (s *desktopSnapshots) status() desktopSnapshotStatus {
++	s.mu.RLock()
++	defer s.mu.RUnlock()
++	return s.state
++}
++func snapshotStamp(path string) string {
++	parts := []string{}
++	for _, suffix := range []string{"", "-wal"} {
++		if st, err := os.Stat(path + suffix); err == nil {
++			parts = append(parts, fmt.Sprintf("%d:%d", st.Size(), st.ModTime().UnixNano()))
++		} else {
++			parts = append(parts, "missing")
++		}
++	}
++	return strings.Join(parts, ":")
++}
++func (s *desktopSnapshots) refresh(ctx context.Context) {
++	var files []string
++	for _, pattern := range []string{"contact/contact.db", "session/session.db", "sns/sns.db", "message/message_[0-9]*.db"} {
++		matches, _ := filepath.Glob(filepath.Join(s.client.DataDir(), pattern))
++		files = append(files, matches...)
++	}
++	sort.Strings(files)
++	updated, failures := 0, 0
++	for _, source := range files {
++		if ctx.Err() != nil {
++			return
++		}
++		info, err := os.Stat(source)
++		if err != nil || info.Size() == 0 {
++			continue
++		}
++		stamp := snapshotStamp(source)
++		rel, _ := filepath.Rel(s.client.DataDir(), source)
++		out := filepath.Join(s.work, "db_storage", rel)
++		if s.stamps[source] == stamp {
++			if _, err := os.Stat(out); err == nil {
++				continue
++			}
++		}
++		if err := s.client.ExportDatabase(ctx, source, out); err != nil {
++			if ctx.Err() != nil {
++				return
++			}
++			failures++
++			log.Warn().Str("database", rel).Msg("desktop snapshot failed; retained previous snapshot")
++			continue
++		}
++		// A changed source is retried; don't acknowledge bytes that arrived mid-copy.
++		if snapshotStamp(source) == stamp {
++			s.stamps[source] = stamp
++		}
++		updated++
++	}
++	s.mu.Lock()
++	s.state.Ready = failures == 0 && len(files) > 0
++	s.state.Files = len(s.stamps)
++	s.state.Updated = updated
++	s.state.Failures = failures
++	s.state.LastPass = time.Now().UTC().Format(time.RFC3339)
++	s.mu.Unlock()
++	log.Info().Int("files", len(s.stamps)).Int("updated", updated).Int("failed", failures).Msg("desktop snapshot pass")
++}
++func (s *desktopSnapshots) run(ctx context.Context, auto bool, debounce time.Duration) {
++	changes := make(chan struct{}, 1)
++	var monitor *filemonitor.FileMonitor
++	if auto {
++		monitor = filemonitor.NewFileMonitor()
++		group, err := filemonitor.NewFileGroup("desktop", s.client.DataDir(), `.*\.db(-wal|-shm)?$`, []string{"fts"})
++		if err == nil {
++			group.AddCallback(func(fsnotify.Event) error {
++				select {
++				case changes <- struct{}{}:
++				default:
++				}
++				return nil
++			})
++			err = monitor.AddGroup(group)
++		}
++		if err == nil {
++			err = monitor.Start()
++		}
++		s.mu.Lock()
++		if err == nil {
++			s.state.Watcher = "active"
++		} else {
++			s.state.Watcher = "polling"
++		}
++		s.mu.Unlock()
++		if err == nil {
++			defer monitor.Stop()
++		}
++	} else {
++		s.mu.Lock()
++		s.state.Watcher = "disabled"
++		s.mu.Unlock()
++	}
++	s.refresh(ctx)
++	if !auto {
++		return
++	}
++	// Periodic reconciliation also catches events lost while macOS was asleep.
++	ticker := time.NewTicker(30 * time.Second)
++	defer ticker.Stop()
++	for {
++		select {
++		case <-ctx.Done():
++			return
++		case <-ticker.C:
++			s.refresh(ctx)
++		case <-changes:
++			timer := time.NewTimer(debounce)
++			select {
++			case <-ctx.Done():
++				timer.Stop()
++				return
++			case <-timer.C:
++			}
++			s.refresh(ctx)
++		}
++	}
++}
+diff --git a/internal/chatlog/desktop_test.go b/internal/chatlog/desktop_test.go
+new file mode 100644
+index 0000000..0ba81b8
+--- /dev/null
++++ b/internal/chatlog/desktop_test.go
+@@ -0,0 +1,158 @@
++package chatlog
++
++import (
++	"context"
++	"database/sql"
++	"encoding/json"
++	"net/http"
++	"net/http/httptest"
++	"os"
++	"path/filepath"
++	"strings"
++	"testing"
++	"time"
++
++	"github.com/sjzar/chatlog/internal/wechatdb/wcdbapi"
++)
++
++func TestDesktopExposesOnlyReadDataAPI(t *testing.T) {
++	handler := desktopAPIHandler(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(204) }))
++	for _, test := range []struct {
++		method, path string
++		status       int
++	}{
++		{"GET", "/api/v1/contacts", 204}, {"GET", "/image/example", 204},
++		{"POST", "/api/v1/contacts", 405}, {"GET", "/api/v1/hook/config", 404},
++		{"GET", "/api/v1/semantic/config", 404},
++	} {
++		result := httptest.NewRecorder()
++		handler.ServeHTTP(result, httptest.NewRequest(test.method, test.path, nil))
++		if result.Code != test.status {
++			t.Errorf("%s %s: %d", test.method, test.path, result.Code)
++		}
++	}
++}
++
++func TestDesktopConfigRejectsRemoteAndOverlappingWork(t *testing.T) {
++	root := t.TempDir()
++	source := filepath.Join(root, "source")
++	os.MkdirAll(filepath.Join(source, "db_storage"), 0700)
++	cfg := map[string]any{"data_dir": source, "work_dir": filepath.Join(root, "work"), "data_key": strings.Repeat("1", 64), "http_addr": "0.0.0.0:5030"}
++	write := func() {
++		raw, _ := json.Marshal(cfg)
++		if err := os.WriteFile(filepath.Join(root, "chatlog-server.json"), raw, 0600); err != nil {
++			t.Fatal(err)
++		}
++	}
++	write()
++	if _, err := loadDesktopConfig(root); err == nil {
++		t.Fatal("public bind accepted")
++	}
++	cfg["http_addr"] = "127.0.0.1:5030"
++	cfg["work_dir"] = filepath.Join(source, "output")
++	write()
++	if _, err := loadDesktopConfig(root); err == nil {
++		t.Fatal("source write accepted")
++	}
++	link := filepath.Join(root, "symlink")
++	os.Symlink(source, link)
++	cfg["work_dir"] = filepath.Join(link, "output")
++	write()
++	if _, err := loadDesktopConfig(root); err == nil {
++		t.Fatal("symlink into source accepted")
++	}
++	cfg["work_dir"] = filepath.Join(root, "work")
++	write()
++	result, err := loadDesktopConfig(root)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if !result.DesktopMode || result.SaveDecryptedMedia || result.GetSemanticConfig().Enabled {
++		t.Fatal("desktop side effects enabled")
++	}
++}
++
++func TestDesktopSnapshotsRecoverWALUpdatesAndStop(t *testing.T) {
++	root := t.TempDir()
++	source := filepath.Join(root, "source", "db_storage")
++	dir := filepath.Join(source, "contact")
++	os.MkdirAll(dir, 0700)
++	path := filepath.Join(dir, "contact.db")
++	db, err := sql.Open("sqlite3", path)
++	if err != nil {
++		t.Fatal(err)
++	}
++	defer db.Close()
++	db.SetMaxOpenConns(1)
++	if _, err = db.Exec("PRAGMA journal_mode=WAL; PRAGMA wal_autocheckpoint=0; CREATE TABLE contact(id INTEGER); INSERT INTO contact VALUES (1)"); err != nil {
++		t.Fatal(err)
++	}
++	t.Setenv("CHATLOG_WCDB_CACHE_DIR", filepath.Join(root, "cache"))
++	client, err := wcdbapi.NewClient(source, strings.Repeat("1", 64))
++	if err != nil {
++		t.Fatal(err)
++	}
++	work := filepath.Join(root, "work")
++	snapshots := newDesktopSnapshots(client, work)
++	ctx, cancel := context.WithCancel(context.Background())
++	defer cancel()
++	done := make(chan struct{})
++	go func() { defer close(done); snapshots.run(ctx, true, 100*time.Millisecond) }()
++	out := filepath.Join(work, "db_storage", "contact", "contact.db")
++	count := func() int {
++		d, err := sql.Open("sqlite3", "file:"+out+"?mode=ro")
++		if err != nil {
++			return -1
++		}
++		defer d.Close()
++		var n int
++		if err := d.QueryRow("SELECT count(*) FROM contact").Scan(&n); err != nil {
++			return -1
++		}
++		return n
++	}
++	wait := func(expected int) {
++		deadline := time.Now().Add(8 * time.Second)
++		for time.Now().Before(deadline) {
++			if count() == expected {
++				return
++			}
++			time.Sleep(25 * time.Millisecond)
++		}
++		t.Fatalf("snapshot count=%d want=%d state=%+v", count(), expected, snapshots.status())
++	}
++	wait(1)
++	if _, err = db.Exec("INSERT INTO contact VALUES (2)"); err != nil {
++		t.Fatal(err)
++	}
++	wait(2)
++	cancel()
++	select {
++	case <-done:
++	case <-time.After(2 * time.Second):
++		t.Fatal("watcher did not stop")
++	}
++	file, err := os.Open(out)
++	if err != nil {
++		t.Fatal(err)
++	}
++	header := make([]byte, 20)
++	_, err = file.Read(header)
++	file.Close()
++	if err != nil || header[18] != 1 || header[19] != 1 {
++		t.Fatal("snapshot still requires WAL sidecars")
++	}
++}
++
++func TestDesktopConfigRejectsInvalidKey(t *testing.T) {
++	root := t.TempDir()
++	source := filepath.Join(root, "source")
++	os.Mkdir(source, 0700)
++	for _, key := range []string{"", strings.Repeat("z", 64), strings.Repeat("0", 63)} {
++		data, _ := json.Marshal(map[string]any{"data_dir": source, "work_dir": filepath.Join(root, "work"), "data_key": key})
++		os.WriteFile(filepath.Join(root, "chatlog-server.json"), data, 0600)
++		if _, err := loadDesktopConfig(root); err == nil {
++			t.Fatal("invalid key accepted")
++		}
++	}
++}
+diff --git a/internal/chatlog/http/mcp.go b/internal/chatlog/http/mcp.go
+index 26b42d0..7d66449 100644
+--- a/internal/chatlog/http/mcp.go
++++ b/internal/chatlog/http/mcp.go
+@@ -310,6 +310,12 @@ func (s *Service) handleMCPGetUserProfile(ctx context.Context, request mcp.CallT
+ 		if contact.Alias != "" {
+ 			buf.WriteString(fmt.Sprintf("微信号: %s\n", contact.Alias))
+ 		}
++		if contact.Description != "" {
++			buf.WriteString(fmt.Sprintf("描述: %s\n", contact.Description))
++		}
++		if len(contact.Labels) > 0 {
++			buf.WriteString(fmt.Sprintf("标签: %s\n", strings.Join(contact.Labels, "、")))
++		}
+ 		buf.WriteString(fmt.Sprintf("是否好友: %v\n", contact.IsFriend))
+ 	} else {
+ 		return &mcp.CallToolResult{
+diff --git a/internal/chatlog/http/route.go b/internal/chatlog/http/route.go
+index cd8fa8a..5eaab28 100644
+--- a/internal/chatlog/http/route.go
++++ b/internal/chatlog/http/route.go
+@@ -6697,12 +6697,15 @@ func buildContactCompatRows(items []*model.Contact, isFriendFilter *bool) []gin.
+ 			display = username
+ 		}
+ 		out = append(out, gin.H{
+-			"username":  username,
+-			"alias":     ct.Alias,
+-			"remark":    ct.Remark,
+-			"nickname":  ct.NickName,
+-			"display":   display,
+-			"is_friend": ct.IsFriend,
++			"username":    username,
++			"alias":       ct.Alias,
++			"remark":      ct.Remark,
++			"nickname":    ct.NickName,
++			"display":     display,
++			"description": ct.Description,
++			"label_ids":   ct.LabelIDs,
++			"labels":      ct.Labels,
++			"is_friend":   ct.IsFriend,
+ 		})
+ 	}
+ 	return out
+@@ -7435,6 +7438,9 @@ func (s *Service) shouldRetryImageDecryptAfterKeyRefresh(err error) bool {
+ }
+ 
+ func (s *Service) tryRefreshImageKeyFromWeChat() (string, error) {
++	if desktopMode(s.conf) {
++		return "", fmt.Errorf("image key needs updating in desktop settings")
++	}
+ 	s.imgKeyRefreshMu.Lock()
+ 	if time.Since(s.lastImgKeyRefresh) < 10*time.Second {
+ 		s.imgKeyRefreshMu.Unlock()
+@@ -7476,7 +7482,7 @@ func (s *Service) tryRefreshImageKeyFromWeChat() (string, error) {
+ 	if s.conf.GetDataDir() != "" {
+ 		go dat2img.ScanAndSetXorKey(s.conf.GetDataDir())
+ 	}
+-	log.Info().Str("img_key", imgKey).Msg("refreshed image key for media decryption retry")
++	log.Info().Msg("refreshed image key for media decryption retry")
+ 	return imgKey, nil
+ }
+ 
+diff --git a/internal/chatlog/http/route_test.go b/internal/chatlog/http/route_test.go
+index 1d3b774..c4a7583 100644
+--- a/internal/chatlog/http/route_test.go
++++ b/internal/chatlog/http/route_test.go
+@@ -4,6 +4,7 @@ import (
+ 	"encoding/json"
+ 	"net/http"
+ 	"net/http/httptest"
++	"reflect"
+ 	"strings"
+ 	"testing"
+ 	"time"
+@@ -914,7 +915,14 @@ func findGroupAction(t *testing.T, groups map[string]map[string]any, groupID, ac
+ func TestBuildContactCompatRowsExcludesChatRooms(t *testing.T) {
+ 	rows := buildContactCompatRows([]*model.Contact{
+ 		{UserName: "room-a@chatroom", NickName: "Room A", IsFriend: true},
+-		{UserName: "wxid_alice", Remark: "Alice", IsFriend: true},
++		{
++			UserName:    "wxid_alice",
++			Remark:      "Alice",
++			Description: "UNC alum, birthday 12.23",
++			LabelIDs:    []int64{4, 17},
++			Labels:      []string{"unc", "drw"},
++			IsFriend:    true,
++		},
+ 	}, nil)
+ 
+ 	if len(rows) != 1 {
+@@ -923,6 +931,15 @@ func TestBuildContactCompatRowsExcludesChatRooms(t *testing.T) {
+ 	if rows[0]["username"] != "wxid_alice" {
+ 		t.Fatalf("rows[0].username = %#v, want wxid_alice", rows[0]["username"])
+ 	}
++	if rows[0]["description"] != "UNC alum, birthday 12.23" {
++		t.Fatalf("rows[0].description = %#v", rows[0]["description"])
++	}
++	if got := rows[0]["labels"]; !reflect.DeepEqual(got, []string{"unc", "drw"}) {
++		t.Fatalf("rows[0].labels = %#v", got)
++	}
++	if got := rows[0]["label_ids"]; !reflect.DeepEqual(got, []int64{4, 17}) {
++		t.Fatalf("rows[0].label_ids = %#v", got)
++	}
+ }
+ 
+ func TestBuildChatRoomCompatRowsIncludesUsernameAlias(t *testing.T) {
+diff --git a/internal/chatlog/http/service.go b/internal/chatlog/http/service.go
+index a1c8b2d..a5f91e7 100644
+--- a/internal/chatlog/http/service.go
++++ b/internal/chatlog/http/service.go
+@@ -5,6 +5,7 @@ import (
+ 	"encoding/json"
+ 	"fmt"
+ 	"net/http"
++
+ 	"os"
+ 	"path/filepath"
+ 	"sort"
+@@ -188,17 +189,19 @@ func NewService(conf Config, db *database.Service) *Service {
+ 	} else {
+ 		s.analyticsCache = analyticsCache
+ 	}
+-	sem, err := semantic.NewManager(conf, db)
+-	if err != nil {
+-		log.Warn().Err(err).Msg("semantic manager init failed")
+-	} else {
+-		s.semantic = sem
+-	}
+-	graph, err := temporalgraph.NewManager(conf, db)
+-	if err != nil {
+-		log.Warn().Err(err).Msg("temporal graph manager init failed")
+-	} else {
+-		s.graph = graph
++	if !desktopMode(conf) {
++		sem, err := semantic.NewManager(conf, db)
++		if err != nil {
++			log.Warn().Err(err).Msg("semantic manager init failed")
++		} else {
++			s.semantic = sem
++		}
++		graph, err := temporalgraph.NewManager(conf, db)
++		if err != nil {
++			log.Warn().Err(err).Msg("temporal graph manager init failed")
++		} else {
++			s.graph = graph
++		}
+ 	}
+ 	s.loadHookEventsFromDisk()
+ 	s.db.SetMessageHookNotifier(s.pushMessageHookEvent)
+@@ -242,9 +245,6 @@ func (s *Service) ListenAndServe() error {
+ 
+ func (s *Service) Stop() error {
+ 
+-	if s.server == nil {
+-		return nil
+-	}
+ 	if s.semantic != nil {
+ 		_ = s.semantic.Close()
+ 	}
+@@ -256,6 +256,9 @@ func (s *Service) Stop() error {
+ 	}
+ 	s.stopSemanticIncrementalWatcher()
+ 
++	if s.server == nil {
++		return nil
++	}
+ 	// 使用超时上下文优雅关闭
+ 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+ 	defer cancel()
+@@ -789,6 +792,9 @@ func cloneStatsPayload(in gin.H) gin.H {
+ 
+ func (s *Service) hookEventsStorePath() string {
+ 	base := strings.TrimSpace(s.conf.GetDataDir())
++	if desktopMode(s.conf) {
++		base = strings.TrimSpace(s.conf.GetWorkDir())
++	}
+ 	if base == "" {
+ 		base = strings.TrimSpace(s.conf.GetWorkDir())
+ 	}
+@@ -852,3 +858,10 @@ func (s *Service) saveHookEventsToDisk() {
+ 		log.Warn().Err(err).Str("path", path).Msg("save hook events failed")
+ 	}
+ }
++
++func desktopMode(config Config) bool {
++	mode, ok := config.(interface{ IsDesktopMode() bool })
++	return ok && mode.IsDesktopMode()
++}
++
++func (s *Service) Handler() http.Handler { return s.router }
+diff --git a/internal/chatlog/manager.go b/internal/chatlog/manager.go
+index 175d202..216d9af 100644
+--- a/internal/chatlog/manager.go
++++ b/internal/chatlog/manager.go
+@@ -853,7 +853,7 @@ func (m *Manager) CommandHTTPServer(configPath string, cmdConf map[string]any) e
+ 		go dat2img.ScanAndSetXorKey(dataDir)
+ 	}
+ 
+-	log.Info().Msgf("server config: %+v", m.sc)
++	log.Info().Msg("server configuration loaded")
+ 
+ 	m.wechat = wechat.NewService(m.sc)
+ 
+diff --git a/internal/model/contact.go b/internal/model/contact.go
+index 67b7359..e5c70dd 100644
+--- a/internal/model/contact.go
++++ b/internal/model/contact.go
+@@ -1,11 +1,14 @@
+ package model
+ 
+ type Contact struct {
+-	UserName string `json:"userName"`
+-	Alias    string `json:"alias"`
+-	Remark   string `json:"remark"`
+-	NickName string `json:"nickName"`
+-	IsFriend bool   `json:"isFriend"`
++	UserName    string   `json:"userName"`
++	Alias       string   `json:"alias"`
++	Remark      string   `json:"remark"`
++	NickName    string   `json:"nickName"`
++	Description string   `json:"description"`
++	LabelIDs    []int64  `json:"labelIds"`
++	Labels      []string `json:"labels"`
++	IsFriend    bool     `json:"isFriend"`
+ }
+ 
+ // CREATE TABLE Contact(
+diff --git a/internal/model/contact_v4.go b/internal/model/contact_v4.go
+index 0d03882..ef34673 100644
+--- a/internal/model/contact_v4.go
++++ b/internal/model/contact_v4.go
+@@ -25,19 +25,21 @@ package model
+ // chat_room_type INTEGER
+ // )
+ type ContactV4 struct {
+-	UserName  string `json:"username"`
+-	Alias     string `json:"alias"`
+-	Remark    string `json:"remark"`
+-	NickName  string `json:"nick_name"`
+-	LocalType int    `json:"local_type"` // 2 群聊; 3 群聊成员(非好友); 5,6 企业微信;
++	UserName    string `json:"username"`
++	Alias       string `json:"alias"`
++	Remark      string `json:"remark"`
++	NickName    string `json:"nick_name"`
++	Description string `json:"description"`
++	LocalType   int    `json:"local_type"` // 2 群聊; 3 群聊成员(非好友); 5,6 企业微信;
+ }
+ 
+ func (c *ContactV4) Wrap() *Contact {
+ 	return &Contact{
+-		UserName: c.UserName,
+-		Alias:    c.Alias,
+-		Remark:   c.Remark,
+-		NickName: c.NickName,
+-		IsFriend: c.LocalType != 3,
++		UserName:    c.UserName,
++		Alias:       c.Alias,
++		Remark:      c.Remark,
++		NickName:    c.NickName,
++		Description: c.Description,
++		IsFriend:    c.LocalType != 3,
+ 	}
+ }
+diff --git a/internal/wechatdb/datasource/wcdb/datasource.go b/internal/wechatdb/datasource/wcdb/datasource.go
+index 8e82219..4e4c6bb 100644
+--- a/internal/wechatdb/datasource/wcdb/datasource.go
++++ b/internal/wechatdb/datasource/wcdb/datasource.go
+@@ -20,6 +20,7 @@ import (
+ 	"github.com/sjzar/chatlog/internal/wechatdb/wcdbapi"
+ 	"github.com/sjzar/chatlog/pkg/util"
+ 	"github.com/sjzar/chatlog/pkg/util/zstd"
++	"google.golang.org/protobuf/encoding/protowire"
+ )
+ 
+ type DataSource struct {
+@@ -290,19 +291,38 @@ func (ds *DataSource) GetMessage(ctx context.Context, talker string, seq int64)
+ 
+ func (ds *DataSource) GetContacts(ctx context.Context, key string, limit, offset int) ([]*model.Contact, error) {
+ 	_ = ctx
+-	rows, err := ds.client.Query("contact", "", `SELECT username, local_type, alias, remark, nick_name FROM contact ORDER BY username`)
++	labelRows, err := ds.client.Query("contact", "", `SELECT label_id_, label_name_ FROM contact_label`)
++	if err != nil {
++		return nil, err
++	}
++	labelNames := make(map[int64]string, len(labelRows))
++	for _, row := range labelRows {
++		labelNames[toInt64(row["label_id_"])] = toString(row["label_name_"])
++	}
++
++	rows, err := ds.client.Query(
++		"contact",
++		"",
++		`SELECT username, local_type, alias, remark, nick_name, description, extra_buffer FROM contact ORDER BY username`,
++	)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 	items := make([]*model.Contact, 0, len(rows))
+ 	for _, row := range rows {
+ 		c := (&model.ContactV4{
+-			UserName:  toString(row["username"]),
+-			LocalType: int(toInt64(row["local_type"])),
+-			Alias:     toString(row["alias"]),
+-			Remark:    toString(row["remark"]),
+-			NickName:  toString(row["nick_name"]),
++			UserName:    toString(row["username"]),
++			LocalType:   int(toInt64(row["local_type"])),
++			Alias:       toString(row["alias"]),
++			Remark:      toString(row["remark"]),
++			NickName:    toString(row["nick_name"]),
++			Description: toString(row["description"]),
+ 		}).Wrap()
++		c.LabelIDs, err = parseContactLabelIDs(toBytes(row["extra_buffer"]))
++		if err != nil {
++			return nil, fmt.Errorf("parse labels for contact %q: %w", c.UserName, err)
++		}
++		c.Labels = resolveContactLabels(c.LabelIDs, labelNames)
+ 		if key != "" && !(c.UserName == key || c.Alias == key || c.Remark == key || c.NickName == key) {
+ 			continue
+ 		}
+@@ -320,6 +340,54 @@ func (ds *DataSource) GetContacts(ctx context.Context, key string, limit, offset
+ 	return items, nil
+ }
+ 
++func parseContactLabelIDs(data []byte) ([]int64, error) {
++	ids := make([]int64, 0)
++	for len(data) > 0 {
++		number, wireType, tagLength := protowire.ConsumeTag(data)
++		if tagLength < 0 {
++			return nil, protowire.ParseError(tagLength)
++		}
++		data = data[tagLength:]
++
++		if number == 30 && wireType == protowire.BytesType {
++			value, valueLength := protowire.ConsumeBytes(data)
++			if valueLength < 0 {
++				return nil, protowire.ParseError(valueLength)
++			}
++			for _, rawID := range strings.Split(string(value), ",") {
++				rawID = strings.TrimSpace(rawID)
++				if rawID == "" {
++					continue
++				}
++				id, err := strconv.ParseInt(rawID, 10, 64)
++				if err != nil {
++					return nil, fmt.Errorf("invalid contact label id %q: %w", rawID, err)
++				}
++				ids = append(ids, id)
++			}
++			data = data[valueLength:]
++			continue
++		}
++
++		valueLength := protowire.ConsumeFieldValue(number, wireType, data)
++		if valueLength < 0 {
++			return nil, protowire.ParseError(valueLength)
++		}
++		data = data[valueLength:]
++	}
++	return ids, nil
++}
++
++func resolveContactLabels(ids []int64, labelNames map[int64]string) []string {
++	labels := make([]string, 0, len(ids))
++	for _, id := range ids {
++		if label := strings.TrimSpace(labelNames[id]); label != "" {
++			labels = append(labels, label)
++		}
++	}
++	return labels
++}
++
+ func (ds *DataSource) GetChatRooms(ctx context.Context, key string, limit, offset int) ([]*model.ChatRoom, error) {
+ 	_ = ctx
+ 	rows, err := ds.client.Query("contact", "", `SELECT username, owner, ext_buffer FROM chat_room ORDER BY username`)
+diff --git a/internal/wechatdb/datasource/wcdb/datasource_test.go b/internal/wechatdb/datasource/wcdb/datasource_test.go
+index cf975e7..045eece 100644
+--- a/internal/wechatdb/datasource/wcdb/datasource_test.go
++++ b/internal/wechatdb/datasource/wcdb/datasource_test.go
+@@ -1,10 +1,12 @@
+ package wcdb
+ 
+ import (
++	"reflect"
+ 	"testing"
+ 	"time"
+ 
+ 	"github.com/sjzar/chatlog/internal/model"
++	"google.golang.org/protobuf/encoding/protowire"
+ )
+ 
+ func TestSortSessionsStableUsesUsernameTieBreaker(t *testing.T) {
+@@ -25,3 +27,39 @@ func TestSortSessionsStableUsesUsernameTieBreaker(t *testing.T) {
+ 		}
+ 	}
+ }
++
++func TestParseContactLabelIDs(t *testing.T) {
++	data := protowire.AppendTag(nil, 4, protowire.BytesType)
++	data = protowire.AppendString(data, "signature")
++	data = protowire.AppendTag(data, 30, protowire.BytesType)
++	data = protowire.AppendString(data, "4, 17")
++
++	got, err := parseContactLabelIDs(data)
++	if err != nil {
++		t.Fatalf("parseContactLabelIDs() error = %v", err)
++	}
++	want := []int64{4, 17}
++	if !reflect.DeepEqual(got, want) {
++		t.Fatalf("parseContactLabelIDs() = %#v, want %#v", got, want)
++	}
++}
++
++func TestParseContactLabelIDsRejectsInvalidID(t *testing.T) {
++	data := protowire.AppendTag(nil, 30, protowire.BytesType)
++	data = protowire.AppendString(data, "4,not-an-id")
++
++	if _, err := parseContactLabelIDs(data); err == nil {
++		t.Fatal("parseContactLabelIDs() error = nil, want invalid label id error")
++	}
++}
++
++func TestResolveContactLabelsSkipsUnknownIDs(t *testing.T) {
++	got := resolveContactLabels(
++		[]int64{4, 999, 17},
++		map[int64]string{4: "unc", 17: "drw"},
++	)
++	want := []string{"unc", "drw"}
++	if !reflect.DeepEqual(got, want) {
++		t.Fatalf("resolveContactLabels() = %#v, want %#v", got, want)
++	}
++}
+diff --git a/internal/wechatdb/wcdbapi/client.go b/internal/wechatdb/wcdbapi/client.go
+index 10ea644..5357a6a 100644
+--- a/internal/wechatdb/wcdbapi/client.go
++++ b/internal/wechatdb/wcdbapi/client.go
+@@ -4,13 +4,16 @@ import (
+ 	"context"
+ 	"crypto/aes"
+ 	"crypto/cipher"
++	"crypto/hmac"
+ 	"crypto/md5"
++	"crypto/sha512"
+ 	"database/sql"
+ 	"encoding/binary"
+ 	"encoding/hex"
+ 	"encoding/json"
+ 	"fmt"
+ 	"io"
++	"net/url"
+ 	"os"
+ 	"path/filepath"
+ 	"regexp"
+@@ -19,9 +22,11 @@ import (
+ 	"strconv"
+ 	"strings"
+ 	"sync"
++	"time"
+ 
+-	_ "github.com/mattn/go-sqlite3"
++	"github.com/mattn/go-sqlite3"
+ 	"github.com/sjzar/chatlog/internal/wechat/decrypt"
++	"golang.org/x/crypto/pbkdf2"
+ )
+ 
+ type cacheEntry struct {
+@@ -45,9 +50,10 @@ type Client struct {
+ 	cacheDir string
+ 	allKeys  map[string]string // normalized rel db path -> enc key
+ 
+-	mu       sync.Mutex
+-	cache    map[string]cacheEntry // rel db path -> decrypted cache entry
+-	inflight map[string]*decryptCall
++	mu          sync.Mutex
++	cache       map[string]cacheEntry // rel db path -> decrypted cache entry
++	inflight    map[string]*decryptCall
++	derivedKeys map[string]string
+ }
+ 
+ func (c *Client) DataDir() string { return c.dataDir }
+@@ -106,6 +112,15 @@ func normalizeDataDir(dataDir string) (string, error) {
+ }
+ 
+ func resolveCacheDir() (string, error) {
++	if configured := strings.TrimSpace(os.Getenv("CHATLOG_WCDB_CACHE_DIR")); configured != "" {
++		if !filepath.IsAbs(configured) {
++			return "", fmt.Errorf("CHATLOG_WCDB_CACHE_DIR must be absolute")
++		}
++		if err := os.MkdirAll(configured, 0o700); err != nil {
++			return "", err
++		}
++		return configured, nil
++	}
+ 	candidates := make([]string, 0, 2)
+ 	if home, err := os.UserHomeDir(); err == nil && strings.TrimSpace(home) != "" {
+ 		candidates = append(candidates, filepath.Join(home, ".chatlog", "wcdb_cache"))
+@@ -1499,6 +1514,10 @@ func (c *Client) resolveDBPath(kind, path string) (string, error) {
+ }
+ 
+ func (c *Client) ensureDecrypted(src string) (string, error) {
++	return c.ensureDecryptedContext(context.Background(), src)
++}
++
++func (c *Client) ensureDecryptedContext(ctx context.Context, src string) (string, error) {
+ 	st, err := os.Stat(src)
+ 	if err != nil {
+ 		return "", err
+@@ -1516,6 +1535,10 @@ func (c *Client) ensureDecrypted(src string) (string, error) {
+ 	if err != nil {
+ 		return "", err
+ 	}
++	useKey, err = c.encryptionKey(src, useKey)
++	if err != nil {
++		return "", err
++	}
+ 	walPath := src + "-wal"
+ 	walMTime := fileMTimeNS(walPath)
+ 	srcMTime := st.ModTime().UnixNano()
+@@ -1524,11 +1547,11 @@ func (c *Client) ensureDecrypted(src string) (string, error) {
+ 		return outPath, nil
+ 	}
+ 
+-	return c.runDecryptionOnce(rel, func() (string, error) {
++	return c.runDecryptionOnceContext(ctx, rel, func() (string, error) {
+ 		if outPath, ok := c.cachedDecryptedPath(rel, srcMTime, walMTime, useKey); ok {
+ 			return outPath, nil
+ 		}
+-		return c.decryptToCache(src, rel, useKey, srcMTime, walMTime)
++		return c.decryptToCache(ctx, src, rel, useKey, srcMTime, walMTime)
+ 	})
+ }
+ 
+@@ -1551,6 +1574,9 @@ func (c *Client) rememberDecryptedPath(rel string, entry cacheEntry) {
+ }
+ 
+ func (c *Client) runDecryptionOnce(key string, fn func() (string, error)) (string, error) {
++	return c.runDecryptionOnceContext(context.Background(), key, fn)
++}
++func (c *Client) runDecryptionOnceContext(ctx context.Context, key string, fn func() (string, error)) (string, error) {
+ 	key = strings.TrimSpace(key)
+ 	if key == "" {
+ 		return fn()
+@@ -1562,7 +1588,11 @@ func (c *Client) runDecryptionOnce(key string, fn func() (string, error)) (strin
+ 	if call := c.inflight[key]; call != nil {
+ 		done := call.done
+ 		c.mu.Unlock()
+-		<-done
++		select {
++		case <-done:
++		case <-ctx.Done():
++			return "", ctx.Err()
++		}
+ 		return call.outPath, call.err
+ 	}
+ 	call := &decryptCall{done: make(chan struct{})}
+@@ -1578,24 +1608,24 @@ func (c *Client) runDecryptionOnce(key string, fn func() (string, error)) (strin
+ 	return call.outPath, call.err
+ }
+ 
+-func (c *Client) decryptToCache(src, rel, useKey string, srcMTime, walMTime int64) (string, error) {
++func (c *Client) decryptToCache(ctx context.Context, src, rel, useKey string, srcMTime, walMTime int64) (string, error) {
+ 	// decrypt to temp cache file
+-	hexID := fmt.Sprintf("%x", md5.Sum([]byte(rel)))
++	hexID := fmt.Sprintf("%x", md5.Sum([]byte(c.dataDir+"\x00"+rel+"\x00"+useKey)))
+ 	outPath := filepath.Join(c.cacheDir, hexID+".db")
+-	tmpPath := outPath + ".tmp"
+ 	walPath := src + "-wal"
+ 
+-	f, err := os.Create(tmpPath)
++	f, err := os.CreateTemp(c.cacheDir, ".decrypt-*.db")
+ 	if err != nil {
+ 		return "", err
+ 	}
++	tmpPath := f.Name()
+ 	decryptor, err := decrypt.NewDecryptor(runtime.GOOS, 4)
+ 	if err != nil {
+ 		f.Close()
+ 		_ = os.Remove(tmpPath)
+ 		return "", err
+ 	}
+-	if err := decryptor.Decrypt(context.Background(), src, useKey, f); err != nil {
++	if err := decryptor.Decrypt(ctx, src, useKey, f); err != nil {
+ 		f.Close()
+ 		_ = os.Remove(tmpPath)
+ 		return "", err
+@@ -1615,6 +1645,10 @@ func (c *Client) decryptToCache(src, rel, useKey string, srcMTime, walMTime int6
+ 			return "", err
+ 		}
+ 	}
++	if fileMTimeNS(src) != srcMTime || fileMTimeNS(walPath) != walMTime {
++		_ = os.Remove(tmpPath)
++		return "", fmt.Errorf("source changed during snapshot; retry required")
++	}
+ 	if err := os.Rename(tmpPath, outPath); err != nil {
+ 		_ = os.Remove(tmpPath)
+ 		return "", err
+@@ -1624,9 +1658,64 @@ func (c *Client) decryptToCache(src, rel, useKey string, srcMTime, walMTime int6
+ 	return outPath, nil
+ }
+ 
++// Existing Chatlog configurations store the SQLCipher master key; newer
++// all_keys.json files store raw per-database AES keys. Validate the first-page
++// HMAC before choosing either format, and keep derived keys only in memory.
++func (c *Client) encryptionKey(src, configured string) (string, error) {
++	f, err := os.Open(src)
++	if err != nil {
++		return "", err
++	}
++	page := make([]byte, pageSize)
++	_, err = io.ReadFull(f, page)
++	f.Close()
++	if err != nil {
++		return "", err
++	}
++	id := configured + string(page[:saltSize])
++	c.mu.Lock()
++	if key := c.derivedKeys[id]; key != "" {
++		c.mu.Unlock()
++		return key, nil
++	}
++	c.mu.Unlock()
++	key, err := decodeHexKey(configured)
++	if err != nil {
++		return "", err
++	}
++	valid := func(enc []byte) bool {
++		macSalt := make([]byte, saltSize)
++		for i := range macSalt {
++			macSalt[i] = page[i] ^ 0x3a
++		}
++		macKey := pbkdf2.Key(enc, macSalt, 2, 32, sha512.New)
++		mac := hmac.New(sha512.New, macKey)
++		mac.Write(page[saltSize : pageSize-64])
++		mac.Write([]byte{1, 0, 0, 0})
++		return hmac.Equal(mac.Sum(nil), page[pageSize-64:])
++	}
++	if !valid(key) {
++		key = pbkdf2.Key(key, page[:saltSize], 256000, 32, sha512.New)
++		if !valid(key) {
++			return "", fmt.Errorf("existing data key does not match this database")
++		}
++	}
++	result := hex.EncodeToString(key)
++	c.mu.Lock()
++	if c.derivedKeys == nil {
++		c.derivedKeys = make(map[string]string)
++	}
++	c.derivedKeys[id] = result
++	c.mu.Unlock()
++	return result, nil
++}
++
+ func (c *Client) resolveDataKey(src string) (string, error) {
+ 	if len(c.allKeys) == 0 {
+-		return "", fmt.Errorf("all_keys.json not found for encrypted db: %s", src)
++		if len(c.dataKey) == 64 {
++			return c.dataKey, nil
++		}
++		return "", fmt.Errorf("no configured key for encrypted db")
+ 	}
+ 	if rel, ok := relPathFromDataDir(c.dataDir, src); ok {
+ 		candidates := []string{
+@@ -1639,7 +1728,10 @@ func (c *Client) resolveDataKey(src string) (string, error) {
+ 			}
+ 		}
+ 	}
+-	return "", fmt.Errorf("all_keys.json missing key for db: %s", src)
++	if len(c.dataKey) == 64 {
++		return c.dataKey, nil
++	}
++	return "", fmt.Errorf("all_keys.json missing key for database")
+ }
+ 
+ func loadAllKeysMap(dataDir string) map[string]string {
+@@ -1649,6 +1741,9 @@ func loadAllKeysMap(dataDir string) map[string]string {
+ 	if strings.EqualFold(filepath.Base(filepath.Clean(dataDir)), "db_storage") {
+ 		paths = append([]string{filepath.Join(filepath.Dir(filepath.Clean(dataDir)), "all_keys.json")}, paths...)
+ 	}
++	if explicit := strings.TrimSpace(os.Getenv("CHATLOG_ALL_KEYS_FILE")); explicit != "" {
++		paths = append([]string{explicit}, paths...)
++	}
+ 	var raw []byte
+ 	for _, p := range paths {
+ 		b, err := os.ReadFile(p)
+@@ -1849,50 +1944,80 @@ const (
+ 	saltSize      = 16
+ )
+ 
++// Apply only complete committed WAL transactions. A live writer may leave a
++// partial or uncommitted suffix; it must never enter a published snapshot.
+ func applyWAL(walPath, outPath string, encKey []byte) error {
+ 	data, err := os.ReadFile(walPath)
++	if os.IsNotExist(err) {
++		return nil
++	}
+ 	if err != nil {
+-		if os.IsNotExist(err) {
+-			return nil
+-		}
+ 		return err
+ 	}
+ 	if len(data) <= walHeaderSize {
+ 		return nil
+ 	}
+-	s1 := binary.BigEndian.Uint32(data[16:20])
+-	s2 := binary.BigEndian.Uint32(data[20:24])
++	magic := binary.BigEndian.Uint32(data[:4])
++	var order binary.ByteOrder = binary.LittleEndian
++	if magic == 0x377f0683 {
++		order = binary.BigEndian
++	} else if magic != 0x377f0682 {
++		return fmt.Errorf("invalid WAL header")
++	}
++	if binary.BigEndian.Uint32(data[8:12]) != pageSize {
++		return fmt.Errorf("unsupported WAL page size")
++	}
++	checksum1, checksum2 := walChecksum(data[:24], 0, 0, order)
++	if checksum1 != binary.BigEndian.Uint32(data[24:28]) || checksum2 != binary.BigEndian.Uint32(data[28:32]) {
++		return fmt.Errorf("invalid WAL header checksum")
++	}
++	salt1, salt2 := binary.BigEndian.Uint32(data[16:20]), binary.BigEndian.Uint32(data[20:24])
+ 	frameSize := walFrameHdr + pageSize
+ 	frames := data[walHeaderSize:]
+-
++	lastCommit := 0
++	var committedSize uint32
++	for pos := 0; pos+frameSize <= len(frames); pos += frameSize {
++		frame := frames[pos : pos+frameSize]
++		pg := binary.BigEndian.Uint32(frame[:4])
++		if pg == 0 || pg > 1_000_000 || binary.BigEndian.Uint32(frame[8:12]) != salt1 || binary.BigEndian.Uint32(frame[12:16]) != salt2 {
++			break
++		}
++		checksum1, checksum2 = walChecksum(frame[:8], checksum1, checksum2, order)
++		checksum1, checksum2 = walChecksum(frame[walFrameHdr:], checksum1, checksum2, order)
++		if checksum1 != binary.BigEndian.Uint32(frame[16:20]) || checksum2 != binary.BigEndian.Uint32(frame[20:24]) {
++			break
++		}
++		if size := binary.BigEndian.Uint32(frame[4:8]); size > 0 {
++			lastCommit = pos + frameSize
++			committedSize = size
++		}
++	}
++	if lastCommit == 0 {
++		return nil
++	}
+ 	dbf, err := os.OpenFile(outPath, os.O_RDWR, 0)
+ 	if err != nil {
+ 		return err
+ 	}
+ 	defer dbf.Close()
+-
+-	for pos := 0; pos+frameSize <= len(frames); pos += frameSize {
+-		fh := frames[pos : pos+walFrameHdr]
+-		pg := binary.BigEndian.Uint32(fh[0:4])
+-		if pg == 0 || pg > 1_000_000 {
+-			continue
+-		}
+-		fs1 := binary.BigEndian.Uint32(fh[8:12])
+-		fs2 := binary.BigEndian.Uint32(fh[12:16])
+-		if fs1 != s1 || fs2 != s2 {
+-			continue
+-		}
+-		pageBuf := frames[pos+walFrameHdr : pos+frameSize]
+-		dec, err := decryptWALPage(encKey, pageBuf, pg)
++	for pos := 0; pos < lastCommit; pos += frameSize {
++		pg := binary.BigEndian.Uint32(frames[pos : pos+4])
++		dec, err := decryptWALPage(encKey, frames[pos+walFrameHdr:pos+frameSize], pg)
+ 		if err != nil {
+ 			return err
+ 		}
+-		off := int64(pg-1) * int64(pageSize)
+-		if _, err := dbf.WriteAt(dec, off); err != nil {
++		if _, err = dbf.WriteAt(dec, int64(pg-1)*pageSize); err != nil {
+ 			return err
+ 		}
+ 	}
+-	return nil
++	return dbf.Truncate(int64(committedSize) * pageSize)
++}
++func walChecksum(data []byte, s1, s2 uint32, order binary.ByteOrder) (uint32, uint32) {
++	for offset := 0; offset+8 <= len(data); offset += 8 {
++		s1 += order.Uint32(data[offset:offset+4]) + s2
++		s2 += order.Uint32(data[offset+4:offset+8]) + s1
++	}
++	return s1, s2
+ }
+ 
+ func decryptWALPage(key []byte, pageData []byte, pgno uint32) ([]byte, error) {
+@@ -1943,3 +2068,115 @@ func aesCBCDecryptRaw(key, iv, data []byte) ([]byte, error) {
+ 	cipher.NewCBCDecrypter(block, iv).CryptBlocks(out, out)
+ 	return out, nil
+ }
++
++// ExportDatabase installs a consistent, standalone SQLite snapshot, including WAL.
++// The source and its sidecars are only opened read-only. The destination must be
++// outside the source tree; consumers see only the previous or complete new file.
++func (c *Client) ExportDatabase(ctx context.Context, src, destination string) error {
++	source, err := filepath.Abs(src)
++	if err != nil {
++		return err
++	}
++	target, err := filepath.Abs(destination)
++	if err != nil {
++		return err
++	}
++	if rel, err := filepath.Rel(c.dataDir, target); err != nil || rel == "." || !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
++		return fmt.Errorf("snapshot destination must be outside source data")
++	}
++	plain, err := c.ensureDecryptedContext(ctx, source)
++	if err != nil {
++		return err
++	}
++	if err := os.MkdirAll(filepath.Dir(target), 0o700); err != nil {
++		return err
++	}
++	file, err := os.CreateTemp(filepath.Dir(target), ".snapshot-*.db")
++	if err != nil {
++		return err
++	}
++	temp := file.Name()
++	file.Close()
++	defer os.Remove(temp)
++	inURL := url.URL{Scheme: "file", Path: plain}
++	q := url.Values{"mode": {"ro"}, "_query_only": {"1"}}
++	inURL.RawQuery = q.Encode()
++	inDB, err := sql.Open("sqlite3", inURL.String())
++	if err != nil {
++		return err
++	}
++	defer inDB.Close()
++	outDB, err := sql.Open("sqlite3", temp)
++	if err != nil {
++		return err
++	}
++	defer outDB.Close()
++	inConn, err := inDB.Conn(ctx)
++	if err != nil {
++		return err
++	}
++	defer inConn.Close()
++	outConn, err := outDB.Conn(ctx)
++	if err != nil {
++		return err
++	}
++	err = outConn.Raw(func(dst any) error {
++		return inConn.Raw(func(src any) error {
++			backup, err := dst.(*sqlite3.SQLiteConn).Backup("main", src.(*sqlite3.SQLiteConn), "main")
++			if err != nil {
++				return err
++			}
++			defer backup.Close()
++			for {
++				if err := ctx.Err(); err != nil {
++					return err
++				}
++				done, err := backup.Step(256)
++				if err != nil {
++					return err
++				}
++				if done {
++					return nil
++				}
++				select {
++				case <-ctx.Done():
++					return ctx.Err()
++				case <-time.After(time.Millisecond):
++				}
++			}
++		})
++	})
++	outConn.Close()
++	if err != nil {
++		return err
++	}
++	// SQLite backup copies the source WAL header. Convert it before publication
++	// so read-only consumers need neither -wal/-shm files nor write access.
++	var journalMode string
++	if err := outDB.QueryRowContext(ctx, "PRAGMA journal_mode=DELETE").Scan(&journalMode); err != nil {
++		return err
++	}
++	if journalMode != "delete" {
++		return fmt.Errorf("snapshot did not leave WAL mode")
++	}
++	var result string
++	if err := outDB.QueryRowContext(ctx, "PRAGMA quick_check").Scan(&result); err != nil {
++		return err
++	}
++	if result != "ok" {
++		return fmt.Errorf("snapshot integrity check failed")
++	}
++	if err := outDB.Close(); err != nil {
++		return err
++	}
++	f, err := os.OpenFile(temp, os.O_RDWR, 0o600)
++	if err != nil {
++		return err
++	}
++	err = f.Sync()
++	f.Close()
++	if err != nil {
++		return err
++	}
++	return os.Rename(temp, target)
++}
+diff --git a/internal/wechatdb/wcdbapi/desktop_test.go b/internal/wechatdb/wcdbapi/desktop_test.go
+new file mode 100644
+index 0000000..dc12f2a
+--- /dev/null
++++ b/internal/wechatdb/wcdbapi/desktop_test.go
+@@ -0,0 +1,155 @@
++package wcdbapi
++
++import (
++	"bytes"
++	"context"
++	"crypto/aes"
++	"crypto/cipher"
++	"crypto/hmac"
++	"crypto/sha512"
++	"encoding/binary"
++	"encoding/hex"
++	"golang.org/x/crypto/pbkdf2"
++	"os"
++	"path/filepath"
++	"strings"
++	"testing"
++)
++
++func TestDesktopAcceptsExistingMasterAndRawKeys(t *testing.T) {
++	master := bytes.Repeat([]byte{7}, 32)
++	salt := bytes.Repeat([]byte{3}, 16)
++	key := pbkdf2.Key(master, salt, 256000, 32, sha512.New)
++	page := make([]byte, pageSize)
++	copy(page, salt)
++	macSalt := make([]byte, 16)
++	for i := range macSalt {
++		macSalt[i] = salt[i] ^ 0x3a
++	}
++	macKey := pbkdf2.Key(key, macSalt, 2, 32, sha512.New)
++	mac := hmac.New(sha512.New, macKey)
++	mac.Write(page[16:4032])
++	mac.Write([]byte{1, 0, 0, 0})
++	copy(page[4032:], mac.Sum(nil))
++	source := filepath.Join(t.TempDir(), "db")
++	os.WriteFile(source, page, 0600)
++	c := &Client{}
++	for _, configured := range [][]byte{master, key} {
++		got, err := c.encryptionKey(source, hex.EncodeToString(configured))
++		if err != nil || got != hex.EncodeToString(key) {
++			t.Fatal("valid key format not recognized", err)
++		}
++	}
++	if _, err := c.encryptionKey(source, strings.Repeat("1", 64)); err == nil {
++		t.Fatal("incorrect key accepted")
++	}
++}
++
++func TestDesktopWALIgnoresUncommittedAndDamagedTail(t *testing.T) {
++	for _, big := range []bool{false, true} {
++		t.Run(map[bool]string{false: "little", true: "big"}[big], func(t *testing.T) {
++			key := bytes.Repeat([]byte{4}, 32)
++			var order binary.ByteOrder = binary.LittleEndian
++			header := make([]byte, 32)
++			magic := uint32(0x377f0682)
++			if big {
++				order = binary.BigEndian
++				magic++
++			}
++			binary.BigEndian.PutUint32(header, magic)
++			binary.BigEndian.PutUint32(header[4:], 3007000)
++			binary.BigEndian.PutUint32(header[8:], 4096)
++			binary.BigEndian.PutUint32(header[16:], 17)
++			binary.BigEndian.PutUint32(header[20:], 19)
++			s1, s2 := walChecksum(header[:24], 0, 0, order)
++			binary.BigEndian.PutUint32(header[24:], s1)
++			binary.BigEndian.PutUint32(header[28:], s2)
++			wal := header
++			for i, value := range []byte{'a', 'b', 'c'} {
++				frame := make([]byte, 24+4096)
++				binary.BigEndian.PutUint32(frame, 2)
++				if i == 0 {
++					binary.BigEndian.PutUint32(frame[4:], 2)
++				}
++				copy(frame[8:16], header[16:24])
++				plain := bytes.Repeat([]byte{value}, 4016)
++				block, _ := aes.NewCipher(key)
++				cipher.NewCBCEncrypter(block, make([]byte, 16)).CryptBlocks(frame[24:24+4016], plain)
++				s1, s2 = walChecksum(frame[:8], s1, s2, order)
++				s1, s2 = walChecksum(frame[24:], s1, s2, order)
++				binary.BigEndian.PutUint32(frame[16:], s1)
++				binary.BigEndian.PutUint32(frame[20:], s2)
++				if i == 2 {
++					frame[60] ^= 1
++				}
++				wal = append(wal, frame...)
++			}
++			root := t.TempDir()
++			src := filepath.Join(root, "db-wal")
++			dst := filepath.Join(root, "db")
++			os.WriteFile(src, append(wal, 1, 2, 3), 0600)
++			os.WriteFile(dst, make([]byte, 3*4096), 0600)
++			if err := applyWAL(src, dst, key); err != nil {
++				t.Fatal(err)
++			}
++			got, _ := os.ReadFile(dst)
++			if len(got) != 8192 || !bytes.Equal(got[4096:4096+4016], bytes.Repeat([]byte{'a'}, 4016)) {
++				t.Fatal("uncommitted/damaged frame entered snapshot")
++			}
++		})
++	}
++}
++
++func TestDesktopCacheUsesExplicitDirectory(t *testing.T) {
++	root := t.TempDir()
++	target := filepath.Join(root, "private")
++	t.Setenv("CHATLOG_WCDB_CACHE_DIR", target)
++	dir, err := resolveCacheDir()
++	if err != nil || dir != target {
++		t.Fatalf("dir=%s err=%v", dir, err)
++	}
++	st, _ := os.Stat(dir)
++	if st.Mode().Perm() != 0700 {
++		t.Fatal("cache permissions")
++	}
++	t.Setenv("CHATLOG_WCDB_CACHE_DIR", "relative")
++	if _, err = resolveCacheDir(); err == nil {
++		t.Fatal("relative cache accepted")
++	}
++}
++func TestDesktopConfiguredKeyFallback(t *testing.T) {
++	root := t.TempDir()
++	os.Mkdir(filepath.Join(root, "session"), 0700)
++	t.Setenv("CHATLOG_WCDB_CACHE_DIR", filepath.Join(t.TempDir(), "cache"))
++	client, err := NewClient(root, strings.Repeat("1", 64))
++	if err != nil {
++		t.Fatal(err)
++	}
++	key, err := client.resolveDataKey(filepath.Join(root, "session", "session.db"))
++	if err != nil || key != strings.Repeat("1", 64) {
++		t.Fatal("configured key was ignored")
++	}
++}
++func TestDesktopBadSnapshotPreservesPrevious(t *testing.T) {
++	root := t.TempDir()
++	os.Mkdir(filepath.Join(root, "session"), 0700)
++	src := filepath.Join(root, "session", "session.db")
++	os.WriteFile(src, []byte("invalid encrypted source"), 0600)
++	t.Setenv("CHATLOG_WCDB_CACHE_DIR", filepath.Join(t.TempDir(), "cache"))
++	c, err := NewClient(root, strings.Repeat("1", 64))
++	if err != nil {
++		t.Fatal(err)
++	}
++	out := filepath.Join(t.TempDir(), "snapshot.db")
++	os.WriteFile(out, []byte("previous"), 0600)
++	if c.ExportDatabase(context.Background(), src, out) == nil {
++		t.Fatal("bad source accepted")
++	}
++	old, _ := os.ReadFile(out)
++	if string(old) != "previous" {
++		t.Fatal("previous snapshot destroyed")
++	}
++	if c.ExportDatabase(context.Background(), src, filepath.Join(root, "output.db")) == nil {
++		t.Fatal("writing source accepted")
++	}
++}

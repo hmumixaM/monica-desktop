@@ -1,0 +1,29 @@
+# LiteLLM proxy for Monica's model features. Deployed on the NAS from ~/docker/litellm/,
+# next to its config.yml (model list and master key) and the Vertex credentials.
+#
+# Published only on the Docker bridge address, so containers reach it through
+# host.docker.internal:4000 and nothing on the LAN or tailnet does.
+services:
+  litellm:
+    image: ghcr.io/berriai/litellm:main-stable
+    # Keep the image this config was written against; upgrade deliberately with `docker pull`.
+    pull_policy: missing
+    container_name: litellm-proxy
+    command: ["--config", "/app/config.yaml", "--num_workers", "1"]
+    ports:
+      - "172.17.0.1:4000:4000"
+    volumes:
+      - ./config.yml:/app/config.yaml:ro
+      - ./application_default_credentials.json:/app/credentials/application_default_credentials.json:ro
+    # The proxy ignores SIGTERM; tini forwards it so `docker stop` exits cleanly instead of with 137.
+    init: true
+    stop_grace_period: 20s
+    mem_limit: 1g
+    memswap_limit: 1g
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:4000/health/liveliness', timeout=5)"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    restart: unless-stopped

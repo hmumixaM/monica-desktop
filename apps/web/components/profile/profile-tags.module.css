@@ -1,0 +1,24 @@
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  display: inline-flex; align-items: center; min-block-size: 30px; border-radius: var(--radius-chip); background: var(--color-tint);
+  font-size: var(--text-sm);
+  & a { padding: 3px 4px 3px 12px; color: var(--color-text); }
+  & a:hover { text-decoration: underline; text-underline-offset: 3px; }
+  & button { display: inline-grid; place-items: center; inline-size: 24px; block-size: 24px; margin-inline-end: 3px; padding: 0;
+    border: 0; border-radius: 50%; background: none; color: var(--color-text-faint); }
+  & button:hover { background: var(--color-surface); color: var(--color-danger); }
+}
+.empty {
+  display: flex; align-items: center; gap: var(--space-2); inline-size: 100%; min-block-size: 40px; padding: 0 var(--space-3);
+  border: 1px dashed var(--color-rule-strong); border-radius: var(--radius-control); background: none; color: var(--color-text-soft); font-size: var(--text-sm);
+  &:hover { border-color: var(--color-text-faint); color: var(--color-text); }
+}
+.form { display: grid; gap: var(--space-2); padding: var(--space-3); border-radius: var(--radius-panel); background: var(--color-tint); }
+.suggestions { display: flex; flex-wrap: wrap; gap: 6px;
+  & button { display: inline-flex; align-items: center; gap: 6px; min-block-size: 30px; padding: 0 10px; border: 1px solid var(--color-rule-strong);
+    border-radius: var(--radius-chip); background: var(--color-surface); color: var(--color-text-soft); font-size: var(--text-sm); }
+  & button:hover { border-color: var(--color-text-faint); color: var(--color-text); }
+  & button b { color: var(--color-text-faint); font-weight: 600; font-size: var(--text-xs); } }
+.suggestions .create { border-style: dashed; color: var(--color-text); }
+.done { justify-self: end; }
+.error { color: var(--color-danger); font-size: var(--text-xs); }

@@ -1,0 +1,15 @@
+.git
+.gitignore
+node_modules
+apps/web/.next
+services/api/.venv
+services/api/.pytest_cache
+services/api/.ruff_cache
+runtime
+infra/volumes
+*.sqlite3
+*.sqlite3-shm
+*.sqlite3-wal
+__pycache__
+.pytest_cache
+.ruff_cache

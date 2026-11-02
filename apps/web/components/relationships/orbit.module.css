@@ -1,0 +1,55 @@
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: var(--space-4); align-items: start;
+  @media (max-width: 960px) { grid-template-columns: minmax(0, 1fr); } }
+.stage { display: grid; gap: var(--space-2); min-inline-size: 0; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.count { color: var(--color-text-soft); font-size: var(--text-xs); }
+
+.canvas { position: relative; inline-size: min(100%, 820px); margin-inline: auto;
+  & svg { display: block; inline-size: 100%; block-size: auto; overflow: visible; } }
+.ring { fill: none; stroke: var(--color-rule); stroke-width: 1.5;
+  &[data-ring="0"] { fill: color-mix(in oklab, var(--gamboge) 13%, transparent); stroke: transparent; } }
+.ringLabel { fill: var(--color-text-faint); font: 500 15px var(--font-body); text-anchor: middle; letter-spacing: .02em; }
+.self { fill: var(--color-surface); stroke: var(--gamboge); stroke-width: 3; }
+.selfLabel { fill: var(--color-text); font: 650 17px var(--font-display); text-anchor: middle; }
+
+.person { cursor: pointer; opacity: var(--recency); outline: none;
+  transition: transform 600ms var(--ease-out), opacity 300ms var(--ease-out);
+  &[data-dim] { opacity: .12; }
+  &[data-hidden] { opacity: 0; pointer-events: none; }
+  &[data-active] .dot, &:focus-visible .dot { stroke: var(--color-text); stroke-width: 3; }
+  @media (prefers-reduced-motion: reduce) { transition: none; } }
+.dot { stroke: var(--color-surface); stroke-width: 2; }
+.name { fill: var(--color-text); font: 550 16px var(--font-body); text-anchor: middle; paint-order: stroke; stroke: var(--color-canvas); stroke-width: 4px;
+  @media (max-width: 720px) { display: none; } }
+
+.tip { position: absolute; z-index: 2; translate: -50% calc(-100% - 22px); display: grid; gap: 2px; min-inline-size: 180px; max-inline-size: 260px;
+  padding: var(--space-2) var(--space-3); border-radius: var(--radius-control); background: var(--color-surface); box-shadow: var(--shadow-float);
+  font-size: var(--text-xs); color: var(--color-text-soft); pointer-events: none;
+  & strong { color: var(--color-text); font-size: var(--text-sm); }
+  & a { pointer-events: auto; margin-block-start: var(--space-1); color: var(--color-accent-text); font-weight: 600; } }
+
+.aside { display: grid; gap: var(--space-4); align-content: start;
+  & h3 { display: flex; align-items: baseline; gap: var(--space-2); margin: 0 0 var(--space-2); font: 600 var(--text-sm) var(--font-body); }
+  & h3 small { color: var(--color-text-faint); font-weight: 400; } }
+.legend { display: grid; gap: 1px; margin: 0; padding: 0; list-style: none;
+  & li { position: relative; }
+  & i { inline-size: 10px; block-size: 10px; border-radius: 50%; }
+  & span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  & b { color: var(--color-text-faint); font-weight: 500; font-size: var(--text-xs); } }
+.filter { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: center; gap: var(--space-2); inline-size: 100%;
+  padding: 5px var(--space-2); padding-inline-end: 36px; border: 0; border-radius: var(--radius-chip); background: none; color: var(--color-text);
+  text-align: start; font-size: var(--text-sm);
+  &:hover { background: var(--color-tint); }
+  &[aria-pressed="true"] { background: var(--color-tint-strong); font-weight: 600; } }
+.modelMark { margin-inline-start: 4px; color: var(--color-accent-text); vertical-align: -1px; }
+.renameButton { position: absolute; inset-block-start: 50%; inset-inline-end: 2px; translate: 0 -50%; opacity: 0; transition: opacity 120ms var(--ease-out);
+  li:hover > &, &:focus-visible { opacity: 1; }
+  @media (hover: none) { opacity: .7; } }
+.rename { display: flex; align-items: center; gap: 2px; padding: 2px 0;
+  & input { flex: 1; min-inline-size: 0; block-size: 30px; font-size: var(--text-sm); } }
+.members { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 2px var(--space-2); margin: 0; padding: 0; list-style: none;
+  & a { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-2); padding: 3px var(--space-1); border-radius: var(--radius-chip); }
+  & a:hover { background: var(--color-tint); }
+  & small { color: var(--color-text-faint); font-size: var(--text-xs); } }
+.memberName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-sm); }
+.note { margin: 0; color: var(--color-text-faint); font-size: var(--text-xs); line-height: 1.5; }

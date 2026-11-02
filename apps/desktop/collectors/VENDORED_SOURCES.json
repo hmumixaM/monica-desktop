@@ -1,0 +1,188 @@
+{
+  "version": 1,
+  "captured": "2026-10-26",
+  "sources": [
+    {
+      "file": "vendor/instagram/archive_profile.py",
+      "source": "instagram-archive-setup/archive_profile.py",
+      "sha256": "8392756aabc26728a4da2ec834a5b9025ca30b0fc452111619117e4eda35bd80",
+      "bundled_sha256": "5164fe88bd4cb07c5969713fdc5620eb9034db29c3ee6c2c0d7a3614a8a9b256"
+    },
+    {
+      "file": "vendor/instagram/archive_followees.py",
+      "source": "instagram-archive-setup/archive_followees.py",
+      "sha256": "26c7e690c0ba2cd036bf8f91efa2ec13090e48d27d5df052f27a919bf394ce10",
+      "bundled_sha256": "13f835f27e23cd2f5a1fd4b20cf757a25b088e420c6b8f426cf254ccca9b5dde"
+    },
+    {
+      "file": "vendor/instagram/archive_stories.py",
+      "source": "instagram-archive-setup/archive_stories.py",
+      "sha256": "cb33f283ab9db5a3e59b786032c584eb605c82ae3f6fe58a3ff555c12822f667",
+      "bundled_sha256": "feffdc55935dd3eecac5216a86e74c1ede43026fc5e9cc204a4aad4f831d51ac"
+    },
+    {
+      "file": "vendor/instagram/archive_highlights.py",
+      "source": "instagram-archive-setup/archive_highlights.py",
+      "sha256": "1d550f164de95f63896036cb7be0d7b88f89ef2069d2592b2d3207c860f6ac4b",
+      "bundled_sha256": "d3d9c238a0069489b0248d5844d7bafd70b8e80fb2e4cd181fe6439cccf29092"
+    },
+    {
+      "file": "vendor/instagram/followee_refresh.py",
+      "source": "instagram-archive-setup/followee_refresh.py",
+      "sha256": "4dab0295722be719dd1857184a0f25ed1f0a08e354bce2283f309eb4b469b7d9",
+      "bundled_sha256": "fd127c8698700cface81ad14283ccc031879fe7db1d96acccda18dd67a864e2e"
+    },
+    {
+      "file": "vendor/instagram/conservative.py",
+      "source": "instagram-archive-setup/conservative.py",
+      "sha256": "046fdac7683e36f4a0f067e0004dcb86612a699e8631ff6d7edf94ad450487f0",
+      "bundled_sha256": "046fdac7683e36f4a0f067e0004dcb86612a699e8631ff6d7edf94ad450487f0"
+    },
+    {
+      "file": "vendor/instagram/query_audit.py",
+      "source": "instagram-archive-setup/query_audit.py",
+      "sha256": "15a078bc1de0c31c8480a58033496c1505298cddf8f794bd38a9f53fbecb2ea7",
+      "bundled_sha256": "15a078bc1de0c31c8480a58033496c1505298cddf8f794bd38a9f53fbecb2ea7"
+    },
+    {
+      "file": "vendor/instagram/manual_followees.py",
+      "source": "instagram-archive-setup/manual_followees.py",
+      "sha256": "071d3d72e107c763a9b32716b249b51efbf61b51f4ba674d1b9ee862db61c89f",
+      "bundled_sha256": "df4259c3adf62fc5836861b4e3129d0a28eeba6cfb33e2ab79d1db12c0f1da7d"
+    },
+    {
+      "file": "vendor/instagram/story_schedule.py",
+      "source": "instagram-collector-update/story_schedule.py",
+      "sha256": "3b5505a0fd2fdacc96e31e91e3154872b0a01b2fea1268576553b43331c41fbf",
+      "bundled_sha256": "3b5505a0fd2fdacc96e31e91e3154872b0a01b2fea1268576553b43331c41fbf"
+    },
+    {
+      "file": "vendor/instagram/public_accounts.py",
+      "source": "instagram-collector-update/public_accounts.py",
+      "sha256": "eba0a2981738b237018c3cd81f4f0f93712feabe191ac8c49c266fb00bb615d1",
+      "bundled_sha256": "eba0a2981738b237018c3cd81f4f0f93712feabe191ac8c49c266fb00bb615d1"
+    },
+    {
+      "file": "vendor/linkedin_enrichment/voyager.py",
+      "source": "linkedin-enrichment/src/linkedin_enrichment/voyager.py",
+      "sha256": "b79f340af642d2a1124d0c8709933344d8225464d31b1d4dea7f1cacb8e658c2",
+      "bundled_sha256": "b79f340af642d2a1124d0c8709933344d8225464d31b1d4dea7f1cacb8e658c2"
+    },
+    {
+      "file": "vendor/linkedin_enrichment/profile_media.py",
+      "source": "linkedin-enrichment/src/linkedin_enrichment/profile_media.py",
+      "sha256": "1990169a196539ddea12fa92aaf531e440139475d9936c3bfc8e0dbd7ba89528",
+      "bundled_sha256": "1990169a196539ddea12fa92aaf531e440139475d9936c3bfc8e0dbd7ba89528"
+    },
+    {
+      "file": "vendor/linkedin_enrichment/models.py",
+      "source": "linkedin-enrichment/src/linkedin_enrichment/models.py",
+      "sha256": "d5bbd23fb4b23eca27df3c28461792a4882a944d34b615b9f099d90d934f2274",
+      "bundled_sha256": "d5bbd23fb4b23eca27df3c28461792a4882a944d34b615b9f099d90d934f2274"
+    },
+    {
+      "file": "vendor/linkedin_enrichment/connections.py",
+      "source": "linkedin-enrichment/src/linkedin_enrichment/connections.py",
+      "sha256": "b1ebd4ad650117d9450866fff2f7f1b7b9e1e6d8fd4b812f0a0f5ca252529c25",
+      "bundled_sha256": "b1ebd4ad650117d9450866fff2f7f1b7b9e1e6d8fd4b812f0a0f5ca252529c25"
+    },
+    {
+      "file": "vendor/linkedin_enrichment/collector.py",
+      "source": "linkedin-enrichment/src/linkedin_enrichment/collector.py",
+      "sha256": "486936dc013d3502e550a93d4db6276cf917452196b0c0d9227bc75fcd267f5f",
+      "bundled_sha256": "486936dc013d3502e550a93d4db6276cf917452196b0c0d9227bc75fcd267f5f"
+    },
+    {
+      "file": "vendor/linkedin_enrichment/__init__.py",
+      "source": "linkedin-enrichment/src/linkedin_enrichment/__init__.py",
+      "sha256": "571e5f26f44fa05338fb28b69f25bf1d3ff952d2acf717ed9657d46d5f3606cb",
+      "bundled_sha256": "571e5f26f44fa05338fb28b69f25bf1d3ff952d2acf717ed9657d46d5f3606cb"
+    },
+    {
+      "file": "vendor/linkedin_enrichment/browser.py",
+      "source": "linkedin-collector-repair/browser.py",
+      "sha256": "55d65687cd81a1ef183e70f15b5bec0c751de7f6549d2cb795b80dc1605be83e",
+      "bundled_sha256": "55d65687cd81a1ef183e70f15b5bec0c751de7f6549d2cb795b80dc1605be83e"
+    },
+    {
+      "file": "vendor/linkedin_enrichment/scrapers.py",
+      "source": "linkedin-enrichment/src/linkedin_enrichment/scrapers.py",
+      "sha256": "d39a5f79b5bfd2a870d1de1ea0320e18a790c3f088bd2e67ac138c4688ed96da",
+      "bundled_sha256": "cb41fb14295452da49deca0ed890e4e8abfa3eadecf5f17d93fa335876ace5d4"
+    },
+    {
+      "file": "vendor/linkedin_enrichment/cli.py",
+      "source": "linkedin-enrichment/src/linkedin_enrichment/cli.py",
+      "sha256": "e35e4a93316552e9ca04271d6305a8d3190e7b0565ca575242739466944edbe6",
+      "bundled_sha256": "e35e4a93316552e9ca04271d6305a8d3190e7b0565ca575242739466944edbe6"
+    },
+    {
+      "file": "vendor/linkedin_enrichment/assets.py",
+      "source": "linkedin-enrichment/src/linkedin_enrichment/assets.py",
+      "sha256": "6ba7923c25c873a32b82acd77018865217ede734447d3766699166c5f0ce73df",
+      "bundled_sha256": "6ba7923c25c873a32b82acd77018865217ede734447d3766699166c5f0ce73df"
+    },
+    {
+      "file": "vendor/linkedin_enrichment/storage.py",
+      "source": "linkedin-collector-repair/storage.py",
+      "sha256": "73cea6b1de80f9ec833e9f2774471aa73148e7f2d9bf5f140d7564357e406c37",
+      "bundled_sha256": "eacba1140501bfce6f4fb4c1749deb8b6ebb36dd0bd14503eb01794635a44105"
+    },
+    {
+      "file": "vendor/linkedin_enrichment/mutuals.py",
+      "source": "linkedin-enrichment/src/linkedin_enrichment/mutuals.py",
+      "sha256": "36c66997f1d1c1e7f4262102cae7f08ab287957ac523aeb11ee9f10f3b22501c",
+      "bundled_sha256": "36c66997f1d1c1e7f4262102cae7f08ab287957ac523aeb11ee9f10f3b22501c"
+    },
+    {
+      "file": "vendor/linkedin_enrichment/messaging.py",
+      "source": "linkedin-enrichment/src/linkedin_enrichment/messaging.py",
+      "sha256": "4b7835db141fe5068181119ae9818bd75221b53d2b47bb19601525f4ef4d3808",
+      "bundled_sha256": "4b7835db141fe5068181119ae9818bd75221b53d2b47bb19601525f4ef4d3808"
+    },
+    {
+      "file": "vendor/linkedin_enrichment/LICENSE",
+      "source": "linkedin-enrichment/LICENSE",
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+      "bundled_sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+    },
+    {
+      "file": "vendor/linkedin_enrichment/NOTICE",
+      "source": "linkedin-enrichment/NOTICE",
+      "sha256": "9c0247f8ddcd9e4f1ee4bb91f7eec8f4a5ea0baaafbc2797f62a2e14dc960b93",
+      "bundled_sha256": "9c0247f8ddcd9e4f1ee4bb91f7eec8f4a5ea0baaafbc2797f62a2e14dc960b93"
+    },
+    {
+      "file": "vendor/instagram/instagram_relationships.py",
+      "source": "instagram-archive-setup/instagram_relationships.py",
+      "sha256": "9a8d57130eb92188611e0ca9ca1ef6a33bcb7cf5c258a222fd271dac28eeddfc",
+      "bundled_sha256": "9a8d57130eb92188611e0ca9ca1ef6a33bcb7cf5c258a222fd271dac28eeddfc"
+    },
+    {
+      "file": "vendor/linkedin_enrichment/activity_posts.py",
+      "source": "monica-next-crm/infra/linkedin/activity_posts.py",
+      "sha256": "0f9aba0fb96c8ecb2f1ebf8037b9b2545c068badc6bd56e347a64c0748878a64",
+      "bundled_sha256": "0f9aba0fb96c8ecb2f1ebf8037b9b2545c068badc6bd56e347a64c0748878a64"
+    },
+    {
+      "file": "vendor/linkedin_enrichment/target_sources.py",
+      "source": "monica-next-crm/infra/linkedin/target_sources.py",
+      "sha256": "2e7a7d94b354db5d6b6b936002c1c16c02d08b40695ed4133c985a6d0182875b",
+      "bundled_sha256": "2e7a7d94b354db5d6b6b936002c1c16c02d08b40695ed4133c985a6d0182875b"
+    },
+    {
+      "file": "vendor/linkedin_enrichment/crm_targets.py",
+      "source": "monica-next-crm/infra/linkedin/crm_targets.py",
+      "sha256": "4653f7204979023c60ee48089b44cab21b74b401419193aa93d96b605b8fc0db",
+      "bundled_sha256": "4653f7204979023c60ee48089b44cab21b74b401419193aa93d96b605b8fc0db"
+    }
+  ],
+  "adaptations": [
+    "Instagram writable paths use MONICA_INSTAGRAM_ROOT; code paths remain SOURCE_DIR",
+    "Instagram Story startup jitter and optional generic public scope from October 20 repair",
+    "LinkedIn October 18 queue fairness and October 22 page access classifier repairs",
+    "LinkedIn current-main SDUI bounded activity parser and independent manual target reconciliation",
+    "Instagram post media is enabled by desktop adapter within the original post/query budgets"
+  ],
+  "hash_policy": "sha256 records the upstream source; bundled_sha256 records the adapted file shipped in the app"
+}

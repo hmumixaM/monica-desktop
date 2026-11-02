@@ -1,0 +1,22 @@
+{
+  "name": "monica-next-crm",
+  "private": true,
+  "workspaces": [
+    "apps/web",
+    "apps/desktop",
+    "packages/contracts"
+  ],
+  "scripts": {
+    "dev:web": "npm --workspace apps/web run dev",
+    "build:web": "npm --workspace apps/web run build",
+    "dev:desktop": "npm --workspace apps/desktop run tauri dev",
+    "build:desktop": "npm --workspace apps/desktop run tauri build -- --bundles app",
+    "lint:web": "npm --workspace apps/web run lint",
+    "test:api": "cd services/api && uv run pytest",
+    "format:api": "cd services/api && uv run ruff format app tests",
+    "check": "npm run lint:web && npm run test:api"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
+  }
+}
