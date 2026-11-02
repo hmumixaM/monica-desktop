@@ -36,8 +36,8 @@ jobs:
       TEST_DATABASE_URL: postgresql+psycopg://crm:crm-test@localhost:5432/crm_test
       DATABASE_URL: postgresql+psycopg://crm:crm-test@localhost:5432/crm_test
       PYTHONPATH: ${{ github.workspace }}/apps/desktop/runtime
-      RAW_ROOT: ${{ runner.temp }}/monica-test-raw
-      MEDIA_ROOT: ${{ runner.temp }}/monica-test-media
+      RAW_ROOT: ${{ github.workspace }}/.local-validation/ci-raw
+      MEDIA_ROOT: ${{ github.workspace }}/.local-validation/ci-media
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
