@@ -7,7 +7,7 @@ dependencies = [
   "playwright==1.62.0",
   "pydantic==2.13.4",
   "linkedin-scraper @ git+https://github.com/joeyism/linkedin_scraper.git@b1cdc1c0e85bee8764d62565d229c682e5eb81bb",
-  "linkedin-cli @ git+https://github.com/darwincr/linkedin-cli.git@004e06a002ecf79c8ca1161c1e1d12487329bc90",
+  "linkedin-cli==0.1.dev27",
 ]
 
 [tool.uv]
@@ -18,3 +18,6 @@ dev = [
     "pillow>=11,<13",
     "pytest>=8.3,<9",
 ]
+
+[tool.uv.sources]
+linkedin-cli = { path = "vendor/linkedin_cli_package" }

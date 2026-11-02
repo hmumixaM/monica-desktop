@@ -86,15 +86,21 @@ def bundle_python():
     # VCS dependencies are pinned by full commit; package archives by hashes.
     lines = lock.read_text().splitlines()
     vcs = [line for line in lines if " @ git+" in line]
+    local = [line for line in lines if ' @ file:' in line]
     if any(not re.search(r"@[0-9a-f]{40}$", line) for line in vcs):
         raise RuntimeError("Every VCS dependency must be pinned to a full commit")
     filtered = DESKTOP / ".build/runtime-pypi.txt"
     filtered.parent.mkdir(parents=True, exist_ok=True)
-    filtered.write_text("\n".join(line for line in lines if line not in vcs) + "\n")
+    filtered.write_text("\n".join(line for line in lines if line not in vcs + local) + "\n")
     # This is a private copy, not uv's managed interpreter installation.
     run(["uv", "pip", "install", "--python", python, "--break-system-packages", "--no-deps", "--require-hashes", "-r", filtered])
     if vcs:
         run(["uv", "pip", "install", "--python", python, "--break-system-packages", "--no-deps", *vcs])
+    for entry in local:
+        path = (ROOT / entry.split(' @ file:', 1)[1]).resolve()
+        if not path.is_relative_to(DESKTOP / 'collectors/vendor'):
+            raise ValueError('Local runtime dependency must be vendored source')
+        run(['uv', 'pip', 'install', '--python', python, '--break-system-packages', '--no-deps', path])
     return {"version": PYTHON_VERSION}
 
 

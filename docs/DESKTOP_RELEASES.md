@@ -17,7 +17,7 @@ Current releases remain prereleases. The workflow does not deploy a NAS, publish
 - Runtime, bundle contracts and collector fixtures; per-test timeouts expose hangs. Collector tests use their own locked environment, including Playwright.
 - Web and settings TypeScript checks, Next.js production build, and Chatlog media fixtures.
 - A clean `macos-26` arm64 runner builds the public patched Chatlog source, Python 3.12.11, Node, PostgreSQL 16, Caddy, Chromium and all source collectors. Rust is pinned to 1.92.0 and Go to 1.25.5.
-- Native verification checks vendored digests, pinned dependencies, 12 entrypoints and real Chromium rendering.
+- Native verification checks all vendored digests, installed dependency source files, pinned dependencies, 12 entrypoints and real Chromium rendering. The unavailable `linkedin-cli` repository is replaced by the exact MIT runtime source snapshot, with a fixed package version and checked provenance.
 - The assembled app runs in a separate empty data directory. Account bootstrap, signed source imports, independent projection, asynchronous WAL history, actual Web before/after values, pause/resume, database failure recovery and complete shutdown must pass.
 - Deep strict codesign verification runs before and after runtime tests.
 

@@ -175,6 +175,240 @@
       "source": "monica-next-crm/infra/linkedin/crm_targets.py",
       "sha256": "4653f7204979023c60ee48089b44cab21b74b401419193aa93d96b605b8fc0db",
       "bundled_sha256": "4653f7204979023c60ee48089b44cab21b74b401419193aa93d96b605b8fc0db"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/LICENSE",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/LICENSE",
+      "sha256": "7af9e8c35289bb5b1f70cf9ed74e868ec9ce634a6be0d9a0716c4c2ddb026cd0",
+      "bundled_sha256": "7af9e8c35289bb5b1f70cf9ed74e868ec9ce634a6be0d9a0716c4c2ddb026cd0"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/README.md",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/README.md",
+      "sha256": "4f907d32da909359c311bbf0327a25d104a6133239345f78a7639a0e9b04a460",
+      "bundled_sha256": "4f907d32da909359c311bbf0327a25d104a6133239345f78a7639a0e9b04a460"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/pyproject.toml",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/pyproject.toml",
+      "sha256": "cfe0089187470291e16db54936e77de436d668c084ca5a98339433cc951d634e",
+      "bundled_sha256": "2a81425eba7ba2ec56b34ef5af7f334b4cf2c58fc5e38d674b14060b932d5254"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/src/linkedin_cli/__init__.py",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/src/linkedin_cli/__init__.py",
+      "sha256": "21d38bd57808d60011d569a0b8e4f933035ef4b81022e83d931eb707afe04fe9",
+      "bundled_sha256": "21d38bd57808d60011d569a0b8e4f933035ef4b81022e83d931eb707afe04fe9"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/src/linkedin_cli/actions/__init__.py",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/src/linkedin_cli/actions/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bundled_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/src/linkedin_cli/actions/connect.py",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/src/linkedin_cli/actions/connect.py",
+      "sha256": "9872371804e6a20434a6caa2cb105b136e681996844a7e6b6286ab72ca05b4d1",
+      "bundled_sha256": "9872371804e6a20434a6caa2cb105b136e681996844a7e6b6286ab72ca05b4d1"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/src/linkedin_cli/actions/conversations.py",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/src/linkedin_cli/actions/conversations.py",
+      "sha256": "6b57971e049f71e135fb3f30a39f866374290ddd280887844d05e6460386a4a1",
+      "bundled_sha256": "6b57971e049f71e135fb3f30a39f866374290ddd280887844d05e6460386a4a1"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/src/linkedin_cli/actions/jobs.py",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/src/linkedin_cli/actions/jobs.py",
+      "sha256": "e8dfc9480d22b83cb55f16645d5f8c07f190158b6ecf6974a04a73f37b4ab0d3",
+      "bundled_sha256": "e8dfc9480d22b83cb55f16645d5f8c07f190158b6ecf6974a04a73f37b4ab0d3"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/src/linkedin_cli/actions/message.py",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/src/linkedin_cli/actions/message.py",
+      "sha256": "e95d7d68676a78f8e1b8de31225d967786ee3be75a94193fd57ab23b6167d932",
+      "bundled_sha256": "e95d7d68676a78f8e1b8de31225d967786ee3be75a94193fd57ab23b6167d932"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/src/linkedin_cli/actions/notifications.py",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/src/linkedin_cli/actions/notifications.py",
+      "sha256": "376c00c2c5fcdff7db94d0ba3751666a9392cb3de712990a5e80eab987c8f697",
+      "bundled_sha256": "376c00c2c5fcdff7db94d0ba3751666a9392cb3de712990a5e80eab987c8f697"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/src/linkedin_cli/actions/page_admin.py",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/src/linkedin_cli/actions/page_admin.py",
+      "sha256": "d7680549c2dd6ca44f7554dbe4a3e16a7237845ed548fce4a73561f6371345ce",
+      "bundled_sha256": "d7680549c2dd6ca44f7554dbe4a3e16a7237845ed548fce4a73561f6371345ce"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/src/linkedin_cli/actions/posts.py",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/src/linkedin_cli/actions/posts.py",
+      "sha256": "f86dacdaad49f4eef88babe56b92cd3c4c425d304cd0e22a2fc6d0e5dda003a0",
+      "bundled_sha256": "f86dacdaad49f4eef88babe56b92cd3c4c425d304cd0e22a2fc6d0e5dda003a0"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/src/linkedin_cli/actions/profile.py",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/src/linkedin_cli/actions/profile.py",
+      "sha256": "1fecd09389423a166aee721e2a564c8e891b4bf511baeccf862c0b46ba66dd7d",
+      "bundled_sha256": "1fecd09389423a166aee721e2a564c8e891b4bf511baeccf862c0b46ba66dd7d"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/src/linkedin_cli/actions/saved_jobs.py",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/src/linkedin_cli/actions/saved_jobs.py",
+      "sha256": "34dd20c0f285387ac77e74421b7aff63aa0036265ce9ec6659c711aab1336d90",
+      "bundled_sha256": "34dd20c0f285387ac77e74421b7aff63aa0036265ce9ec6659c711aab1336d90"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/src/linkedin_cli/actions/search.py",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/src/linkedin_cli/actions/search.py",
+      "sha256": "c6763dc667d3267ff457c165bbf0a4f5430b813cdfd7cd3644f993916074cd12",
+      "bundled_sha256": "c6763dc667d3267ff457c165bbf0a4f5430b813cdfd7cd3644f993916074cd12"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/src/linkedin_cli/actions/status.py",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/src/linkedin_cli/actions/status.py",
+      "sha256": "04dbd20e85abe4c9748199b794cf63351c3b8d81dcde3a830fe97b6af7ceb6b3",
+      "bundled_sha256": "04dbd20e85abe4c9748199b794cf63351c3b8d81dcde3a830fe97b6af7ceb6b3"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/src/linkedin_cli/api/__init__.py",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/src/linkedin_cli/api/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bundled_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/src/linkedin_cli/api/client.py",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/src/linkedin_cli/api/client.py",
+      "sha256": "bb7d37845339ad8792fe9ee92668f0d8e129e290129eb630eab47b9ce80b28f8",
+      "bundled_sha256": "bb7d37845339ad8792fe9ee92668f0d8e129e290129eb630eab47b9ce80b28f8"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/src/linkedin_cli/api/messaging/__init__.py",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/src/linkedin_cli/api/messaging/__init__.py",
+      "sha256": "a5dba3eadb266b4212e4caac80fa7a624fcd72cf1a3abbc5401be4596e3163d5",
+      "bundled_sha256": "a5dba3eadb266b4212e4caac80fa7a624fcd72cf1a3abbc5401be4596e3163d5"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/src/linkedin_cli/api/messaging/conversations.py",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/src/linkedin_cli/api/messaging/conversations.py",
+      "sha256": "b30fbde90346af572fd7508dba84f3fa8b210754dc6f3ea787b42aa723d5e537",
+      "bundled_sha256": "b30fbde90346af572fd7508dba84f3fa8b210754dc6f3ea787b42aa723d5e537"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/src/linkedin_cli/api/messaging/send.py",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/src/linkedin_cli/api/messaging/send.py",
+      "sha256": "6294d4863d2914c45d3d98b2353669b34264e0e9e4c2cecc9ce70fc168376fc6",
+      "bundled_sha256": "6294d4863d2914c45d3d98b2353669b34264e0e9e4c2cecc9ce70fc168376fc6"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/src/linkedin_cli/api/messaging/utils.py",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/src/linkedin_cli/api/messaging/utils.py",
+      "sha256": "8264c758fad9389dcc961895b532185d50ab430defa4cdbc6db414d5f696dbe2",
+      "bundled_sha256": "8264c758fad9389dcc961895b532185d50ab430defa4cdbc6db414d5f696dbe2"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/src/linkedin_cli/api/voyager.py",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/src/linkedin_cli/api/voyager.py",
+      "sha256": "1a42993d8895e6c7fe94e6b2e8e4676606455ec4589a41a812b2617af1197caf",
+      "bundled_sha256": "1a42993d8895e6c7fe94e6b2e8e4676606455ec4589a41a812b2617af1197caf"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/src/linkedin_cli/auth.py",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/src/linkedin_cli/auth.py",
+      "sha256": "682eac7d90b95aa6a9038c9466a74843fefc4f1e6b2d32b5bf93c6cd3f641b7b",
+      "bundled_sha256": "682eac7d90b95aa6a9038c9466a74843fefc4f1e6b2d32b5bf93c6cd3f641b7b"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/src/linkedin_cli/browser/__init__.py",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/src/linkedin_cli/browser/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bundled_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/src/linkedin_cli/browser/login.py",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/src/linkedin_cli/browser/login.py",
+      "sha256": "2bb7f00b3075c865b529ae6000af692d8b2c009cf53e1f21347e38857c0d73ec",
+      "bundled_sha256": "2bb7f00b3075c865b529ae6000af692d8b2c009cf53e1f21347e38857c0d73ec"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/src/linkedin_cli/browser/nav.py",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/src/linkedin_cli/browser/nav.py",
+      "sha256": "415afe8e99f7a88487fc9473c3e84349ee607df583512d1120c39f39a22e9ce8",
+      "bundled_sha256": "415afe8e99f7a88487fc9473c3e84349ee607df583512d1120c39f39a22e9ce8"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/src/linkedin_cli/cli.py",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/src/linkedin_cli/cli.py",
+      "sha256": "4e7b86e23c9a27bd5a9b6331add5f80d2f13eb2f4cc96f513e5923dcbf531148",
+      "bundled_sha256": "4e7b86e23c9a27bd5a9b6331add5f80d2f13eb2f4cc96f513e5923dcbf531148"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/src/linkedin_cli/conf.py",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/src/linkedin_cli/conf.py",
+      "sha256": "09e0b9902a34a40b24e5e5f6bc489ef9e117dd84623d1b83c599b99239aae362",
+      "bundled_sha256": "09e0b9902a34a40b24e5e5f6bc489ef9e117dd84623d1b83c599b99239aae362"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/src/linkedin_cli/enums.py",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/src/linkedin_cli/enums.py",
+      "sha256": "85136bd2f4a54e6fb0e81785f702cbb716e86f356acd7350b2608fb9a0964f36",
+      "bundled_sha256": "85136bd2f4a54e6fb0e81785f702cbb716e86f356acd7350b2608fb9a0964f36"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/src/linkedin_cli/exceptions.py",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/src/linkedin_cli/exceptions.py",
+      "sha256": "408eda9cb08d528dde6cc6fa1901149381d7fa60fea493a451084f6dab6c9b87",
+      "bundled_sha256": "408eda9cb08d528dde6cc6fa1901149381d7fa60fea493a451084f6dab6c9b87"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/src/linkedin_cli/launcher.py",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/src/linkedin_cli/launcher.py",
+      "sha256": "faaecef00bcc3185153e2d9a0e548d27c22641013ea3cd80d8a01db865f97e2c",
+      "bundled_sha256": "faaecef00bcc3185153e2d9a0e548d27c22641013ea3cd80d8a01db865f97e2c"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/src/linkedin_cli/page_state.py",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/src/linkedin_cli/page_state.py",
+      "sha256": "4b79bd618245fd85ecbf34ddd1e2e9701dfe15045a37a555c50dad704db89038",
+      "bundled_sha256": "4b79bd618245fd85ecbf34ddd1e2e9701dfe15045a37a555c50dad704db89038"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/src/linkedin_cli/profile_locks.py",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/src/linkedin_cli/profile_locks.py",
+      "sha256": "b1077fc371a04b5fca9bbff0a8fa004ca81e8740e25cd08505661c80692c111c",
+      "bundled_sha256": "b1077fc371a04b5fca9bbff0a8fa004ca81e8740e25cd08505661c80692c111c"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/src/linkedin_cli/session.py",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/src/linkedin_cli/session.py",
+      "sha256": "38c66f68481b65206952b1c32bf7c4c946f021c47b38ea110f52e1f1702c47df",
+      "bundled_sha256": "38c66f68481b65206952b1c32bf7c4c946f021c47b38ea110f52e1f1702c47df"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/src/linkedin_cli/setup/__init__.py",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/src/linkedin_cli/setup/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bundled_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/src/linkedin_cli/setup/self_profile.py",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/src/linkedin_cli/setup/self_profile.py",
+      "sha256": "c2a13dfe3833cec71c40ba96a667b86a6280acca3d40e32f40cbf4ab9ce15b6f",
+      "bundled_sha256": "c2a13dfe3833cec71c40ba96a667b86a6280acca3d40e32f40cbf4ab9ce15b6f"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/src/linkedin_cli/url_utils.py",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/src/linkedin_cli/url_utils.py",
+      "sha256": "ad87f2585a8b7c796e24cbfb05fcd4aa533f544b96cc2f67d50aacc31297229f",
+      "bundled_sha256": "ad87f2585a8b7c796e24cbfb05fcd4aa533f544b96cc2f67d50aacc31297229f"
+    },
+    {
+      "file": "vendor/linkedin_cli_package/src/linkedin_cli/worker.py",
+      "source": "https://github.com/darwincr/linkedin-cli@004e06a002ecf79c8ca1161c1e1d12487329bc90/src/linkedin_cli/worker.py",
+      "sha256": "75904b5f05b5cd17e6662bcb92c99f22f8a0fd6e71180daba2e42e3987fca373",
+      "bundled_sha256": "75904b5f05b5cd17e6662bcb92c99f22f8a0fd6e71180daba2e42e3987fca373"
     }
   ],
   "adaptations": [

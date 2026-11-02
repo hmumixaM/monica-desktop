@@ -34,7 +34,7 @@ def verify_files(root):
 
 
 PROBE = r'''
-import importlib,importlib.metadata as metadata,json,pathlib,sys
+import hashlib,importlib,importlib.metadata as metadata,json,pathlib,sys
 root=pathlib.Path(sys.argv[1]);contract=json.loads((root/'capabilities.json').read_text())
 assert pathlib.Path(sys.executable).resolve().is_relative_to(root)
 for name in ('collector','linkedin_enrichment.cli','app.wechat_contacts','app.import_messages',
@@ -50,6 +50,19 @@ for name,expected in contract['vcs_commits'].items():
     actual=json.loads(distribution.read_text('direct_url.json'))['vcs_info']['commit_id']
     assert actual==expected, name
     commits[name]=actual
+vendored={}
+for name,spec in contract.get('vendored_distributions',{}).items():
+    manifest=root/spec['manifest']
+    assert hashlib.sha256(manifest.read_bytes()).hexdigest()==spec['manifest_sha256'], name
+    source=json.loads(manifest.read_text())
+    assert source['commit']==spec['commit'] and metadata.version(name)==spec['version'], name
+    module=importlib.import_module(spec['module'])
+    directory=pathlib.Path(module.__file__).resolve().parent
+    assert directory.is_relative_to(root), name
+    for entry in source['package_files']:
+        path,expected=entry['path'],entry['sha256']
+        assert hashlib.sha256((directory/path).read_bytes()).hexdigest()==expected, name+':'+path
+    vendored[name]=source['commit']
 from playwright.sync_api import sync_playwright
 with sync_playwright() as p:
     assert pathlib.Path(p.chromium.executable_path).resolve().is_relative_to(root)
@@ -57,7 +70,7 @@ with sync_playwright() as p:
     page=browser.new_page();page.set_content('<title>Monica bundled runtime</title>')
     assert page.title()=='Monica bundled runtime'
     browser.close()
-print(json.dumps({'packages':versions,'vcs_commits':commits,'chromium':'passed','importer_modules':'passed'}))
+print(json.dumps({'packages':versions,'vcs_commits':commits,'vendored_distribution_commits':vendored,'chromium':'passed','importer_modules':'passed'}))
 '''
 
 

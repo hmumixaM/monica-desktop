@@ -130,11 +130,19 @@ wheels = [
 [[package]]
 name = "linkedin-cli"
 version = "0.1.dev27"
-source = { git = "https://github.com/darwincr/linkedin-cli.git?rev=004e06a002ecf79c8ca1161c1e1d12487329bc90#004e06a002ecf79c8ca1161c1e1d12487329bc90" }
+source = { directory = "vendor/linkedin_cli_package" }
 dependencies = [
     { name = "playwright" },
     { name = "playwright-stealth" },
     { name = "tenacity" },
+    { name = "termcolor" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "playwright", specifier = ">=1.59" },
+    { name = "playwright-stealth" },
+    { name = "tenacity", specifier = ">=8,<10" },
     { name = "termcolor" },
 ]
 
@@ -198,7 +206,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "instaloader", specifier = "==4.15.3" },
-    { name = "linkedin-cli", git = "https://github.com/darwincr/linkedin-cli.git?rev=004e06a002ecf79c8ca1161c1e1d12487329bc90" },
+    { name = "linkedin-cli", directory = "vendor/linkedin_cli_package" },
     { name = "linkedin-scraper", git = "https://github.com/joeyism/linkedin_scraper.git?rev=b1cdc1c0e85bee8764d62565d229c682e5eb81bb" },
     { name = "playwright", specifier = "==1.62.0" },
     { name = "pydantic", specifier = "==2.13.4" },

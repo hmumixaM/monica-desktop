@@ -5,7 +5,7 @@ This repository preserves the notices and licenses that accompany copied compone
 - **Chatlog Alpha**: MIT; public upstream <https://github.com/waawei/chatlog_alpha>. The source pin and local patch are in `apps/desktop/patches/chatlog/`, with the upstream license retained there.
 - **LinkedIn enrichment adaptation**: GPL-3.0-only; see `apps/desktop/collectors/vendor/linkedin_enrichment/LICENSE` and `NOTICE`. Its pinned dependencies are recorded in the collector lockfile and `VENDORED_SOURCES.json`.
 - **linkedin_scraper**: fetched from its pinned upstream commit; see <https://github.com/joeyism/linkedin_scraper>.
-- **linkedin-cli**: fetched from its pinned upstream commit; MIT; see <https://github.com/darwincr/linkedin-cli>.
+- **linkedin-cli**: MIT source snapshot from commit `004e06a002ecf79c8ca1161c1e1d12487329bc90`, retained under `apps/desktop/collectors/vendor/linkedin_cli_package/` because the original repository is no longer reachable. Its LICENSE, source digests and provenance are included; only build metadata pins the formerly resolved package version.
 - **D3, TopoJSON client, and world-atlas**: notices are retained under `apps/web/public/vendor/`.
 - **Instagram collector sources**: provenance and adapted file digests are recorded in `apps/desktop/collectors/VENDORED_SOURCES.json`.
 

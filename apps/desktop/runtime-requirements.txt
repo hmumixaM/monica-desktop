@@ -1171,7 +1171,7 @@ lazy-loader==0.6 \
     --hash=sha256:2f4b7824d6401958639008a0cae20c776b61dff619accd6890693e2de8260167 \
     --hash=sha256:77253be3391b06124a0e16105bd663b6c54470af1a9ca8e1cf026f38d58ed056
     # via scikit-image
-linkedin-cli @ git+https://github.com/darwincr/linkedin-cli.git@004e06a002ecf79c8ca1161c1e1d12487329bc90
+linkedin-cli @ file:apps/desktop/collectors/vendor/linkedin_cli_package
     # via monica-desktop-collectors (apps/desktop/collectors/pyproject.toml)
 linkedin-scraper @ git+https://github.com/joeyism/linkedin_scraper.git@b1cdc1c0e85bee8764d62565d229c682e5eb81bb
     # via monica-desktop-collectors (apps/desktop/collectors/pyproject.toml)
