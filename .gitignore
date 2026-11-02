@@ -49,6 +49,8 @@ apps/desktop/playwright-report/
 *.pem
 *.p12
 *.key
+*.provisionprofile
+*.mobileprovision
 **/settings.json
 **/storage_state.json
 **/cookies.json

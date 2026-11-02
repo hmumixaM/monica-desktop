@@ -645,6 +645,11 @@ pub fn run() {
         .setup(|app| {
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+            // Foundation resolves the application container when App Sandbox is
+            // enabled. $HOME can still point to the user's unrestricted home.
+            #[cfg(target_os = "macos")]
+            let home = PathBuf::from(objc2_foundation::NSHomeDirectory().to_string());
+            #[cfg(not(target_os = "macos"))]
             let home = app.path().home_dir()?;
             let data_root = home.join("Library/Application Support/Monica");
             let logs_root = home.join("Library/Logs/Monica");

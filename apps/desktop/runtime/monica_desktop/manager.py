@@ -197,7 +197,8 @@ class Manager:
             password.write_text(self.config.value["secrets"]["database"])
             os.chmod(password, 0o600)
             try:
-                self.oneshot("database-init", [pg_bin / "initdb", "-D", pg, "-U", "monica", "--encoding=UTF8",
+                self.oneshot("database-init", [pg_bin / "initdb", "-L", self.bundle / "postgres/share/postgresql@16",
+                    "-D", pg, "-U", "monica", "--encoding=UTF8",
                     "--locale=C", "--auth-local=trust", "--auth-host=scram-sha-256", "--pwfile", password])
             finally:
                 password.unlink(missing_ok=True)
