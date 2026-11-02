@@ -34,6 +34,59 @@ def macho_type(path):
     return None
 
 
+def restore_framework_links(app):
+    """Restore versioned framework links omitted by Tauri's resource copier.
+
+    Chromium has one canonical version directory. A flattened top-level binary
+    makes Apple's validator interpret the version directory as another broken
+    framework, even when a local deep signature check succeeds.
+    """
+    restored = 0
+    for framework in app.rglob('*.framework'):
+        if framework.is_symlink() or not framework.is_dir():
+            continue
+        versions = framework / 'Versions'
+        if not versions.is_dir():
+            continue
+        candidates = [path for path in versions.iterdir()
+                      if path.name != 'Current' and path.is_dir() and not path.is_symlink()]
+        if len(candidates) != 1:
+            raise ValueError(f'Expected one canonical framework version: {framework.name}')
+        version = candidates[0]
+        info = plistlib.loads((version / 'Resources/Info.plist').read_bytes())
+        executable = info['CFBundleExecutable']
+        if Path(executable).name != executable or not (version / executable).is_file():
+            raise ValueError(f'Invalid framework executable: {framework.name}')
+        if info.get('CFBundlePackageType') != 'FMWK':
+            raise ValueError(f'Invalid framework package type: {framework.name}')
+
+        def replace_link(path, target):
+            nonlocal restored
+            if path.is_symlink() and path.readlink() == Path(target):
+                if not path.resolve().is_relative_to(framework.resolve()):
+                    raise ValueError('Framework link escapes its bundle')
+                return
+            if path.is_symlink() or path.is_file():
+                path.unlink()
+            elif path.is_dir():
+                shutil.rmtree(path)
+            path.symlink_to(target)
+            restored += 1
+
+        replace_link(versions / 'Current', version.name)
+        for child in version.iterdir():
+            if child.name != '_CodeSignature':
+                replace_link(framework / child.name, Path('Versions/Current') / child.name)
+        # A previously flattened framework may have two incompatible seals.
+        # All code is signed again below, after the canonical layout is restored.
+        for seal in (framework / '_CodeSignature', version / '_CodeSignature'):
+            if seal.is_symlink():
+                seal.unlink()
+            elif seal.exists():
+                shutil.rmtree(seal)
+    return restored
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--app', type=Path, required=True)
@@ -58,6 +111,7 @@ def main():
     output.mkdir(parents=True)
     app = output / 'Monica.app'
     run('cp', '-cR', source, app)
+    restored_links = restore_framework_links(app)
     info_path = app / 'Contents/Info.plist'
     info = plistlib.loads(info_path.read_bytes())
     if info.get('CFBundleIdentifier') != identifier:
@@ -102,6 +156,7 @@ def main():
     (output / 'package-report.json').write_text(json.dumps({
         'bundle_id': identifier, 'version': info['CFBundleShortVersionString'], 'build': args.build,
         'signed_macho_files': signed + 1, 'signed_nested_bundles': len(bundles),
+        'framework_links_restored': restored_links,
         'package': package.name, 'signature_verified': True,
         'sandbox_runtime_verified': False,
     }, indent=2) + '\n')

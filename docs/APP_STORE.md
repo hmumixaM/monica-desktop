@@ -30,7 +30,8 @@ python3 apps/desktop/scripts/package_appstore.py \
 ```
 
 Use a new output directory and increasing build number. The script verifies
-profile identity, signs nested Mach-O files and bundles, verifies the sealed app,
+profile identity, restores versioned framework links omitted by Tauri's resource
+copier, signs nested Mach-O files and bundles, verifies the sealed app,
 creates a signed `.pkg`, and records a package report. It never replaces the
 installed application and does not execute the application or its collectors.
 
@@ -51,6 +52,14 @@ The upload receipt's delivery UUID can be queried through the authenticated
 `GET /v1/buildUploads/{deliveryUUID}` API while the binary is still processing.
 At that stage `/v1/builds` may not yet contain a selectable build. Store receipts
 outside source control; don't print authentication tokens into build logs.
+
+The initial upload failed Apple's structural validation with `90291`, `90292`
+and related `90238` signature errors. The Chromium framework's `Versions/Current`
+and top-level links had been omitted or flattened in the Tauri application
+resources. Packaging now restores the canonical versioned layout before signing.
+The repair requires one unambiguous version and validates its `FMWK` metadata;
+it does not remove the browser or any collector. Use a new build number when
+uploading the corrected package.
 
 ## Sandbox status
 

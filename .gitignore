@@ -48,6 +48,7 @@ apps/desktop/playwright-report/
 *.backup
 *.pem
 *.p12
+*.p8
 *.key
 *.provisionprofile
 *.mobileprovision
