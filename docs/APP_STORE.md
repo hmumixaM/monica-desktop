@@ -38,6 +38,20 @@ Upload with Apple's `altool` using an existing App Store Connect key. Upload
 success, `VALID` build processing, submission for review and App Store approval
 are distinct states; verify each independently before reporting it complete.
 
+Xcode 26.5's default uploader stalled while generating the asset description on
+this build Mac. The built-in compatibility uploader completed the upload:
+
+```sh
+xcrun altool --use-old-altool --upload-app -t macos \
+  -f .local-validation/store-build-1/Monica-0.1.0-1-macos.pkg \
+  --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"
+```
+
+The upload receipt's delivery UUID can be queried through the authenticated
+`GET /v1/buildUploads/{deliveryUUID}` API while the binary is still processing.
+At that stage `/v1/builds` may not yet contain a selectable build. Store receipts
+outside source control; don't print authentication tokens into build logs.
+
 ## Sandbox status
 
 The App Store package enables App Sandbox, network client/server access and
