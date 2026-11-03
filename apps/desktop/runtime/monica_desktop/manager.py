@@ -40,6 +40,13 @@ class Manager:
             path.mkdir(parents=True, exist_ok=True, mode=0o700)
         os.chmod(root, 0o700)
         self.config = Config(root)
+        contract_path = self.bundle / 'capabilities.json'
+        contract = json.loads(contract_path.read_text()) if contract_path.is_file() else {}
+        self.distribution = contract.get('distribution', 'standalone')
+        self.disabled_features = set(contract.get('disabled_features', []))
+        for feature in self.disabled_features:
+            if feature in self.config.value['sources']:
+                self.config.value['sources'][feature]['enabled'] = False
         self.children: dict[str, Child] = {}
         self.ports = {}
         self.state, self.error, self.operation = "stopped", "", ""
@@ -242,6 +249,9 @@ class Manager:
                    "ai": self.config.value["ai"]["enabled"],
                    **{key: value["enabled"] for key, value in self.config.value["sources"].items()}}
         for name, source in self.sources.items():
+            if name in self.disabled_features:
+                source.update(state='unavailable', error='商店版保留归档导入，不包含自动采集和本地人脸处理。')
+                continue
             if paused or not enabled[name]:
                 source.update(state="paused" if enabled[name] else "disconnected", error="")
 
@@ -271,7 +281,7 @@ class Manager:
                 self.spawn_collector(provider, "watch")
         if self.config.value["sources"]["instagram"]["enabled"]:
             self.spawn("story-sync", [self.python, "-m", "app.sync_instagram_stories", "--watch", "--interval", "28800"], background=True)
-        if self.config.value["sources"]["linkedin"]["enabled"]:
+        if self.config.value["sources"]["linkedin"]["enabled"] or (self.root / 'raw/linkedin/CURRENT/linkedin_enrichment.incoming.json').is_file():
             self.spawn("linkedin-sync", [self.python, "-m", "app.sync_linkedin", "--source",
                 self.root / "raw/linkedin/linkedin_enrichment.incoming.json", "--watch"], background=True)
         if self.config.value["sources"]["faces"]["enabled"]:
@@ -286,7 +296,7 @@ class Manager:
         lanes = []
         if self.config.value['wechat']['connected']:
             lanes.extend(('contacts', 'moments', 'messages', 'media', 'download'))
-        if self.config.value['sources']['instagram']['enabled']:
+        if self.config.value['sources']['instagram']['enabled'] or (self.root / 'staging/instagram-current/CURRENT').is_symlink():
             lanes.extend(('instagram', 'instagram-media'))
         if lanes:
             lanes.append('maintenance')
@@ -422,6 +432,8 @@ class Manager:
             self.start_archive_lanes()
 
     def spawn_collector(self, provider, action):
+        if provider in self.disabled_features:
+            raise ValueError('商店版不包含浏览器自动采集，请在 Web 界面导入已有归档。')
         if provider not in {"instagram", "linkedin"}:
             raise ValueError("不支持此来源")
         command = [self.python, self.bundle / "collectors/collector.py", "--provider", provider, "--data-root", self.root]
@@ -435,6 +447,8 @@ class Manager:
 
     def source_login(self, payload):
         provider = payload.get("source")
+        if provider in self.disabled_features:
+            raise ValueError('商店版不包含浏览器登录和自动采集，请导入已有归档。')
         if provider not in {"instagram", "linkedin"}:
             raise ValueError("请选择 Instagram 或 LinkedIn")
         if self.state not in {"running", "paused"}:
@@ -487,6 +501,9 @@ class Manager:
         self.metrics.update(self.db_operation("status"))
 
     def save_config(self, payload):
+        for feature in self.disabled_features:
+            if payload.get('config', {}).get('sources', {}).get(feature, {}).get('enabled'):
+                raise ValueError('商店版未提供此功能。已有归档仍可导入和浏览。')
         old_state = self.state
         proposed = payload.get("config", {}).get("wechat", {}).get("data_dir")
         if proposed:
@@ -497,6 +514,23 @@ class Manager:
             self.stop()
             self.start(paused=old_state == "paused")
 
+    def import_archive(self, payload):
+        provider = payload.get('source')
+        if provider not in {'instagram', 'linkedin'}:
+            raise ValueError('请选择 Instagram 或 LinkedIn 归档。')
+        if self.state != 'running':
+            raise ValueError('请先启动或恢复后台运行。')
+        path = payload.get('path')
+        if not isinstance(path, str) or not Path(path).is_dir():
+            raise ValueError('请选择已有归档文件夹。')
+        self.oneshot('archive-stage-' + provider, [self.python, '-m', 'monica_desktop.archive_import',
+            '--provider', provider, '--source', path, '--data-root', self.root], timeout=600)
+        self.start_archive_lanes()
+        if provider == 'linkedin':
+            self.spawn('linkedin-sync', [self.python, '-m', 'app.sync_linkedin', '--source',
+                self.root / 'raw/linkedin/linkedin_enrichment.incoming.json', '--watch'], background=True)
+        self.wake()
+
     def test_ai(self):
         result = self.db_operation("test-ai", timeout=75)
         self.sources["ai"].update(state="connected", last_success=now(), error="")
@@ -505,6 +539,7 @@ class Manager:
     def status(self):
         with self.lock:
             return {"state": self.state, "operation": self.operation, "error": self.error,
+                    "distribution": self.distribution, "disabled_features": sorted(self.disabled_features),
                     "web_url": self.web_url if self.state in {"running", "paused", "pausing"} else "",
                     "services": [child.public() for child in self.children.values()],
                     "sources": list(self.sources.values()), "config": self.config.public(),
@@ -516,6 +551,7 @@ class Manager:
                    "wake": self.wake, "test_ai": self.test_ai,
                    "save_config": lambda: self.save_config(payload), "connect_wechat": lambda: self.connect_wechat(payload),
                    "source_login": lambda: self.source_login(payload), "collect": lambda: self.collect(payload),
+                   "import_archive": lambda: self.import_archive(payload),
                    "create_account": lambda: self.create_account(payload)}
         if command not in methods:
             raise ValueError("未知操作")

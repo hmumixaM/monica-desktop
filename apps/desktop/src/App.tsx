@@ -201,6 +201,7 @@ export default function App() {
   const [wechatImageKey, setWechatImageKey] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const storeLite = status?.distribution === "app-store-lite";
 
   const refresh = useCallback(async () => {
     if (polling.current) return;
@@ -499,7 +500,7 @@ export default function App() {
                       { name: "instagram", label: "Instagram" },
                       { name: "linkedin", label: "LinkedIn" },
                       { name: "faces", label: "照片里的人" },
-                    ].map((item) => (
+                    ].filter((item) => !status?.disabled_features?.includes(item.name)).map((item) => (
                       <div key={item.name} className="status-row">
                         <span>{item.label}</span>
                         <SourceState status={source(item.name)} />
@@ -686,6 +687,27 @@ export default function App() {
                     </button>
                   </form>
                 </Section>
+                {storeLite ? (
+                  <Section title="归档导入" description="导入 Monica 完整版已保存的 Instagram 或 LinkedIn 归档。">
+                    <p className="hint">Instagram 文件夹需包含 profiles；LinkedIn 文件夹需包含 linkedin_enrichment.incoming.json 和对应 assets。商店版不包含浏览器自动采集和本地人脸处理。</p>
+                    <div className="button-row">
+                      {(["instagram", "linkedin"] as const).map((provider) => (
+                        <button
+                          key={provider}
+                          className="button"
+                          disabled={!canAct || status?.state !== "running"}
+                          onClick={() => void run("导入归档", async () => {
+                            const path = await bridge.chooseDirectory();
+                            if (path) await bridge.command("import_archive", { source: provider, path });
+                          })}
+                        >
+                          导入 {provider === "instagram" ? "Instagram" : "LinkedIn"} 归档
+                        </button>
+                      ))}
+                    </div>
+                    <p className="hint">导入进度会显示在运行概览和 Web 界面的导入中心。</p>
+                  </Section>
+                ) : (<>
                 <Section
                   title="Instagram"
                   description="登录自己的账号，按已有的采集节奏持续更新。"
@@ -841,6 +863,7 @@ export default function App() {
                     }
                   />
                 </Section>
+                </>)}
               </>
             )}
 
@@ -972,7 +995,7 @@ export default function App() {
             {tab === "general" && (
               <>
                 <Section title="启动与后台运行">
-                  <Toggle
+                  {!storeLite && <Toggle
                     label="登录 Mac 后自动运行"
                     description="登录后在菜单栏启动 Monica。"
                     checked={config.autostart}
@@ -992,7 +1015,7 @@ export default function App() {
                           : "已关闭登录后自动运行。",
                       )
                     }
-                  />
+                  />}
                   <div className="note">
                     Mac
                     睡眠时任务会暂停；唤醒后会从已保存的进度继续。关闭设置窗口不会停止后台运行。

@@ -46,6 +46,57 @@ class ConfigTests(unittest.TestCase):
             self.assertFalse(config.value["ai"]["enabled"])
 
 
+class AppStoreEditionTests(unittest.TestCase):
+    def test_manual_archive_uses_atomic_snapshots_and_rejects_linked_files(self):
+        from monica_desktop.archive_import import stage
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            source = root / 'archive'
+            (source / 'profiles/alice').mkdir(parents=True)
+            profile = source / 'profiles/alice/profile.json'
+            profile.write_text('{"username":"alice"}')
+            with patch.object(sys, 'path', [str(Path(__file__).resolve().parents[3] / 'infra'), *sys.path]):
+                result = stage('instagram', source, root / 'data')
+                current = root / 'data/staging/instagram-current/CURRENT'
+                previous = current.resolve()
+                self.assertEqual(result['files'], 1)
+                self.assertTrue((current / '.crm-ready').is_file())
+                self.assertEqual((current / 'profiles/alice/profile.json').read_text(), profile.read_text())
+                (source / 'profiles/alice/linked.json').symlink_to(profile)
+                with self.assertRaisesRegex(ValueError, '符号链接'):
+                    stage('instagram', source, root / 'data')
+                self.assertEqual(current.resolve(), previous)
+
+    def test_store_edition_cannot_reenable_removed_collectors(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            bundle = root / 'bundle'
+            bundle.mkdir()
+            (bundle / 'capabilities.json').write_text(json.dumps({
+                'distribution': 'app-store-lite', 'disabled_features': ['instagram', 'linkedin', 'faces']}))
+            config = Config(root / 'data')
+            config.update({'sources': {'linkedin': {'enabled': True}}})
+            manager = Manager(bundle, root / 'data', root / 'logs')
+            self.assertFalse(manager.config.value['sources']['linkedin']['enabled'])
+            # Loading a reduced edition does not destroy standalone settings.
+            self.assertTrue(Config(root / 'data').value['sources']['linkedin']['enabled'])
+            manager.reset_source_states()
+            self.assertEqual(manager.sources['linkedin']['state'], 'unavailable')
+            with self.assertRaises(ValueError):
+                manager.source_login({'source': 'linkedin'})
+            with self.assertRaises(ValueError):
+                manager.save_config({'config': {'sources': {'faces': {'enabled': True}}}})
+            manager.state = 'running'
+            manager.config.value['wechat']['connected'] = True
+            with patch.object(manager, 'spawn') as spawn, patch.object(manager, 'start_chatlog'):
+                manager.start_background()
+            names = [call.args[0] for call in spawn.call_args_list]
+            self.assertIn('archive-messages', names)
+            self.assertIn('worker-projection', names)
+            self.assertNotIn('linkedin-watch', names)
+            self.assertNotIn('faces', names)
+
+
 class ManagerTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()

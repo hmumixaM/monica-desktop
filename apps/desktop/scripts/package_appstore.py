@@ -5,6 +5,7 @@ This packages a built app and verifies its signatures. It does not certify
 sandbox runtime compatibility and does not execute the app or its collectors.
 """
 import argparse
+import hashlib
 import json
 import plistlib
 import shutil
@@ -96,6 +97,8 @@ def main():
     parser.add_argument('--team-id', required=True)
     parser.add_argument('--build', required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--lite', action='store_true', help='Build the reduced App Store edition approved for release')
+    parser.add_argument('--node-binary', type=Path, help='Node built by build_appstore_node.py; required for --lite')
     args = parser.parse_args()
     if not args.build.isdecimal() or int(args.build) < 1:
         parser.error('--build must be a positive integer')
@@ -104,6 +107,17 @@ def main():
         parser.error('--app must be an existing application bundle')
     if output.exists():
         parser.error('--output must be a new directory')
+    node_report = None
+    if args.lite:
+        if not args.node_binary or not args.node_binary.is_file() or not args.node_binary.with_suffix('.json').is_file():
+            parser.error('--lite requires --node-binary and its source build report')
+        node_report = json.loads(args.node_binary.with_suffix('.json').read_text())
+        digest = hashlib.sha256()
+        with args.node_binary.open('rb') as handle:
+            for block in iter(lambda: handle.read(1024 * 1024), b''):
+                digest.update(block)
+        if digest.hexdigest() != node_report.get('node_sha256') or not node_report.get('private_launchservices_process_title_removed'):
+            parser.error('App Store Node source build report does not match its binary')
     profile = plistlib.loads(subprocess.check_output(['security', 'cms', '-D', '-i', str(args.profile)]))
     identifier = 'org.monica.desktop'
     if profile['Entitlements'].get('com.apple.application-identifier') != f'{args.team_id}.{identifier}':
@@ -111,6 +125,20 @@ def main():
     output.mkdir(parents=True)
     app = output / 'Monica.app'
     run('cp', '-cR', source, app)
+    edition_report = None
+    if args.lite:
+        runtime = app / 'Contents/Resources/runtime'
+        shutil.copy2(args.node_binary, runtime / 'node/bin/node')
+        shutil.copy2(args.node_binary.with_suffix('.json'), runtime / 'node/appstore-build.json')
+        from prune_appstore import prune
+        edition_report = prune(runtime)
+        manifest_path = runtime / 'manifest.json'
+        manifest = json.loads(manifest_path.read_text())
+        manifest.update(distribution='app-store-lite', node=node_report, face_models={'mode': 'unavailable'},
+                        appstore_python_packages=edition_report['python_packages_kept'])
+        manifest_path.write_text(json.dumps(manifest, indent=2) + '\n')
+        run('python3', Path(__file__).with_name('verify_appstore_apis.py'), '--app', app,
+            '--report', output / 'api-scan.json')
     restored_links = restore_framework_links(app)
     info_path = app / 'Contents/Info.plist'
     info = plistlib.loads(info_path.read_bytes())
@@ -161,6 +189,7 @@ def main():
         'framework_links_restored': restored_links,
         'package': package.name, 'signature_verified': True,
         'sandbox_runtime_verified': False,
+        'edition': edition_report,
     }, indent=2) + '\n')
     print(package)
 

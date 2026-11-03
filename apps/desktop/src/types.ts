@@ -23,6 +23,8 @@ export type DesktopConfig = {
 };
 
 export type DesktopStatus = {
+  distribution?: "standalone" | "app-store-lite";
+  disabled_features?: string[];
   state: string;
   operation?: string;
   configured?: boolean;

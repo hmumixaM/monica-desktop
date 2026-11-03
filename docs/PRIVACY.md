@@ -1,11 +1,16 @@
 # Monica Desktop privacy
 
-Effective date: November 2, 2026
+Effective date: November 3, 2026
 
 Monica Desktop keeps its relationship database, imported records, downloaded
 media, change history, source credentials and settings on your Mac. There is no
 Monica-hosted account, analytics service or advertising service in this desktop
 application. Your local account authenticates access to the local web interface.
+
+The reduced Mac App Store edition includes local CRM, WeChat connection and
+manual import of existing Monica archives. Browser-based Instagram/LinkedIn
+collection and optional face processing are features of the standalone edition;
+they are not included in the reduced Store edition.
 
 ## Sources you connect
 

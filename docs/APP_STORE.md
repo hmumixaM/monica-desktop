@@ -78,3 +78,50 @@ report for that validation.
 Store screenshots use synthetic local data from the public build. The privacy
 policy is [PRIVACY.md](PRIVACY.md). Source sessions, private databases, model
 weights and developer credentials must not be included in the upload.
+
+## Reduced Store edition (build 3 onward)
+
+App Review rejected build 2 under 2.4.5 and 2.5.1. The loopback server entitlement
+is required by the actual architecture: Python control/API services, PostgreSQL,
+Next.js and Caddy listen exclusively on 127.0.0.1. Explain this in the review notes
+and Resolution Center; removing the entitlement would break local operation.
+
+The owner approved a reduced Store edition. It retains the local CRM, WeChat,
+archive ingestion, CDC/history and optional user-configured model APIs. Browser
+collectors and face processing remain in the standalone edition. Store settings
+offer explicit folder import for Monica's published Instagram profiles and
+LinkedIn JSON/assets snapshots. These are Monica archive formats, not arbitrary
+Instagram/LinkedIn account-export ZIPs. Snapshot publication stays atomic and
+uses the existing independent import/projection lanes.
+
+`package_appstore.py --lite` computes the backend's installed Python dependency
+closure and removes the browser, Playwright, scientific/face dependencies, unused
+Tk/Perl modules, source GeoNames JSON, and Node development tools. The generated
+city SQLite index is validated before removing its build-time inputs. Uvicorn
+uses its asyncio/h11 implementation instead of uvloop's additional libuv copy.
+Standalone runtime assembly and collector source pins are unchanged.
+
+Build the Store Node from the checksum-verified official Node 22.21.1 source:
+
+```sh
+uv run --python 3.12 python apps/desktop/scripts/build_appstore_node.py \
+  --output .local-validation/store-node/node --jobs 6
+```
+
+The build replaces libuv's macOS process-title function at source level with its
+public thread-name implementation. This removes the private LaunchServices
+lookups, rather than concealing their symbols in a binary. Inspector, npm and
+Corepack are not part of this runtime. Its source/binary hashes are recorded in
+`node.json` next to the output. Pass `--lite --node-binary <that output>` to the
+existing packaging command, using a fresh build number/output directory and a
+built app containing the updated settings shell and desktop Python sources.
+The packager checks that report and runs `verify_appstore_apis.py` against the
+actual Mach-O inputs before signing. The scan checks the 150 APIs named by Apple
+in this rejection; Apple's own analysis may identify additional issues.
+
+Run backend-module, immutable city-index, media conversion and archive snapshot
+checks against the reduced resource tree before signing. Use the matching build
+Python interpreter for those import checks: the distribution-signed interpreter
+has sandbox inheritance entitlements and cannot be launched as a standalone
+terminal executable. Those component checks do not establish full sandbox
+runtime compatibility. The owner's request to omit that full test still applies.

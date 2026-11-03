@@ -278,6 +278,7 @@ async fn control_command(app: AppHandle, command: String, payload: Value) -> Res
         "resume",
         "stop",
         "connect_wechat",
+        "import_archive",
         "test_ai",
         "source_login",
         "collect",
@@ -365,6 +366,12 @@ async fn choose_file(app: AppHandle) -> Result<Option<String>, String> {
 
 #[tauri::command]
 fn set_autostart(app: AppHandle, enabled: bool) -> Result<(), String> {
+    let contract = app.state::<RuntimeState>().bundle_root.join("capabilities.json");
+    if fs::read(&contract).ok().and_then(|data| serde_json::from_slice::<Value>(&data).ok())
+        .and_then(|value| value.get("distribution").and_then(Value::as_str).map(str::to_owned))
+        .as_deref() == Some("app-store-lite") {
+        return Err("商店版请手动打开应用，在菜单栏保持后台运行。".into());
+    }
     if enabled {
         app.autolaunch().enable()
     } else {
